@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}الطلب #{{ o.id }}{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap"><article class="card mt stack" id="invoice">
+  <div class="row-between"><h1>{{ 'إيصال' if o.status=='paid' else 'الطلب' }} #{{ o.id }}</h1>
+    <span class="badge {{ {'paid':'b-ok','pending':'b-warn','failed':'b-bad','refunded':'b-closed'}.get(o.status,'b-lead') }}" id="orderStatus">{{ {'paid':'مدفوع','pending':'بانتظار الدفع','failed':'فشل الدفع','refunded':'مسترد','cancelled':'ملغى'}[o.status] }}</span></div>
+  {% if o.status == 'paid' %}
+  <p class="info small">إيصال إلكتروني. {% if not settings.vat_registered %}البائع غير مسجل في ضريبة القيمة المضافة؛ هذا ليس فاتورة ضريبية.{% else %}الفاتورة الضريبية المبسطة المتوافقة مع الفوترة الإلكترونية تُصدر عبر مزود معتمد (غير مفعل بعد).{% endif %}</p>
+  {% endif %}
+  <dl class="kv">
+    <dt>رقم الإيصال</dt><dd class="num">{{ o.invoice_number or '—' }}</dd>
+    <dt>البائع</dt><dd>{{ settings.seller_name }}{% if settings.seller_vat_number %} — الرقم الضريبي <span class="num">{{ settings.seller_vat_number }}</span>{% endif %}</dd>
+    <dt>البند</dt><dd>{{ o.product.title if o.product else ('اشتراك ' ~ PLANS[o.plan].title ~ ' — 30 يومًا') }}</dd>
+    <dt>قبل الضريبة</dt><dd class="num">{{ money(o.amount_before_vat) }} ر.س</dd>
+    <dt>الضريبة</dt><dd class="num">{{ money(o.vat_amount) }} ر.س</dd>
+    <dt>الإجمالي</dt><dd class="num"><strong>{{ money(o.total) }} ر.س</strong></dd>
+    <dt>تاريخ الطلب</dt><dd class="num">{{ ksa(o.created_at, '%Y-%m-%d %H:%M') }}</dd>
+    <dt>تاريخ الدفع</dt><dd class="num">{{ ksa(o.paid_at, '%Y-%m-%d %H:%M') }}</dd>
+    <dt>البوابة</dt><dd>{{ o.provider }}{% if o.provider=='sandbox' %} (تجريبية){% endif %}</dd>
+  </dl>
+  <div class="actions no-print">{% if o.status=='paid' %}<a class="btn btn-primary" href="/account/orders">إلى التنزيلات</a>{% elif o.status in ('pending','failed') %}<a class="btn btn-primary" href="/{{ 'store/' ~ o.product.slug if o.product else 'pricing' }}">المحاولة مجددًا</a>{% endif %}</div>
+</article></div>
+{% endblock %}

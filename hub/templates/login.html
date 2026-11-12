@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}تسجيل الدخول — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap"><div class="card mt" id="authCard">
+  <h1>تسجيل الدخول</h1>
+  {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/login">{{ m.csrf_field() }}<input type="hidden" name="next" value="{{ next }}">
+    <label>البريد الإلكتروني<input type="email" name="email" required autocomplete="email" dir="ltr"></label>
+    <label>كلمة المرور<input type="password" name="password" required autocomplete="current-password" dir="ltr"></label>
+    <button class="btn btn-primary" type="submit">دخول</button>
+  </form>
+  <p class="mt">ليس لديك حساب؟ <a href="/register">أنشئ حسابًا مجانيًا</a></p>
+</div></div>
+{% endblock %}

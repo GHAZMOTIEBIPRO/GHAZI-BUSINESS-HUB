@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}قائمة المراجعة — الإدارة{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head row-between"><h1>قائمة المراجعة</h1><a class="btn btn-outline" href="/admin">← الإدارة</a></div>
+  <nav class="actions mb">{% for k, v in REVIEW_STATES.items() %}<a class="btn btn-sm {{ 'btn-dark' if k==state else 'btn-outline' }}" href="?state={{ k }}">{{ v }}</a>{% endfor %}</nav>
+  {% for o in rows %}
+  <article class="card mb" id="opp-{{ o.id }}">
+    <div class="opp-top"><h2>{{ o.title }}</h2>{{ m.type_badge(o.opportunity_type) }}</div>
+    {% if o.review_reasons %}<ul class="notice">{% for r in o.review_reasons %}<li>{{ r }}</li>{% endfor %}</ul>{% endif %}
+    <dl class="kv mt">
+      <dt>المصدر</dt><dd>{{ o.source.name }} — <a href="{{ o.source_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ o.source_url }}</a></dd>
+      <dt>المدينة</dt><dd>{{ m.val(o.city) }}</dd><dt>التخصصات</dt><dd>{{ o.trades|join('، ') or '—' }}</dd>
+      <dt>الجهة / المقاول</dt><dd>{{ m.val(o.owner_entity) }} / {{ m.val(o.main_contractor) }}</dd>
+      <dt>جهة التواصل</dt><dd>{% if o.contact %}{{ o.contact.public_business_name or '' }} {{ o.contact.public_business_email or '' }} {{ o.contact.public_business_phone or '' }} — {{ 'صالحة للعرض' if contact_ok(o.contact) else 'لن تُعرض (ينقصها مصدر/إذن/تاريخ)' }}{% else %}—{% endif %}</dd>
+      <dt>الأدلة</dt><dd>{% for e in o.evidence %}<a href="{{ e.url }}" target="_blank" rel="noopener noreferrer nofollow">{{ e.finding or e.url }}</a><br>{% else %}لا يوجد{% endfor %}</dd>
+      <dt>أول ظهور / آخر تحقق</dt><dd class="num">{{ ksa(o.first_seen_at) }} / {{ ksa(o.verified_at) }}</dd>
+    </dl>
+    {% if state != 'rejected' %}
+    <form method="post" action="/admin/opportunities/{{ o.id }}/review" class="grid g3 mt">{{ m.csrf_field() }}
+      <label>التصنيف المعتمد<select name="opportunity_type">{% for k, v in OPP_TYPES.items() %}<option value="{{ k }}" {% if k==o.opportunity_type %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+      <label>سبب الرفض (عند الرفض)<input type="text" name="reason" maxlength="300"></label>
+      <div class="actions"><button class="btn btn-primary" name="decision" value="approve" type="submit">اعتماد للنشر</button><button class="btn btn-outline" name="decision" value="reject" type="submit">رفض</button></div>
+    </form>{% endif %}
+  </article>
+  {% else %}<div class="card"><p class="muted">لا توجد سجلات في هذه الحالة.</p></div>{% endfor %}
+
+  <h2 class="mt">بلاغات المستخدمين</h2>
+  {% for r in reports %}<div class="card mb row-between"><div><a href="/radar/{{ r.opportunity_id }}">الفرصة #{{ r.opportunity_id }}</a> — {{ r.category }}<p class="small">{{ r.details }}</p></div>
+    <form method="post" action="/admin/reports/{{ r.id }}/close">{{ m.csrf_field() }}<button class="btn btn-sm btn-outline" type="submit">إغلاق</button></form></div>
+  {% else %}<p class="muted">لا بلاغات مفتوحة.</p>{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}{{ o.title }} — رادار غازي{% endblock %}
+{% block description %}{{ OPP_TYPES[o.opportunity_type] }} في {{ o.city or 'السعودية' }}. المصدر: {{ o.source.name }}، آخر تحقق {{ ksa(o.verified_at) }}.{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head">
+    <p><a href="/radar">← رادار الفرص</a></p>
+    <h1>{{ o.title }}</h1>
+    <div class="tags">{{ m.type_badge(o.opportunity_type) }} {{ m.freshness(o) }}{% if user %}<span class="badge b-{{ level }}">{{ MATCH_LABELS[level] }}</span>{% endif %}</div>
+    {% if reasons %}<p class="small muted">سبب المطابقة: {{ reasons|join('، ') }}</p>{% endif %}
+  </div>
+  <div class="split">
+    <div class="stack">
+      <section class="card">
+        <h2>بيانات الفرصة</h2>
+        <dl class="kv">
+          <dt>نوع الفرصة</dt><dd>{{ OPP_TYPES[o.opportunity_type] }}</dd>
+          <dt>المدينة / المنطقة</dt><dd>{{ m.val(o.city) }}{% if o.region %} — {{ o.region }}{% endif %}</dd>
+          <dt>نوع الأعمال</dt><dd>{% if o.trades %}{{ o.trades|join('، ') }}{% else %}<em class="missing">غير محدد</em>{% endif %}</dd>
+          <dt>الجهة المالكة</dt><dd>{{ m.val(o.owner_entity) }}</dd>
+          <dt>المقاول الرئيسي</dt><dd>{{ m.val(o.main_contractor) }}</dd>
+          <dt>الشركة المسؤولة</dt><dd>{{ m.val(o.responsible_company) }}</dd>
+          <dt>تاريخ الإعلان</dt><dd class="num">{{ ksa(o.published_at) }}</dd>
+          <dt>آخر موعد للتقديم</dt><dd>{% if o.deadline_at %}<span class="num">{{ ksa(o.deadline_at) }}</span>{% else %}<em class="missing">غير معلوم</em>{% endif %}</dd>
+          <dt>آخر تحقق</dt><dd><span class="num">{{ ksa(o.verified_at, '%Y-%m-%d %H:%M') }}</span> (توقيت الرياض)</dd>
+          <dt>المصدر</dt><dd>{{ o.source.name }} — <a href="{{ o.source_url }}" rel="noopener noreferrer nofollow" target="_blank">فتح المصدر الأصلي ↗</a></dd>
+        </dl>
+        {% if o.summary %}<h3 class="mt">الوصف كما ورد</h3><p>{{ o.summary }}</p>{% endif %}
+      </section>
+
+      <section class="card">
+        <h2>جهة التواصل</h2>
+        {% if show_contact %}
+          <dl class="kv">
+            <dt>الاسم المهني</dt><dd>{{ m.val(o.contact.public_business_name) }}</dd>
+            <dt>المسمى</dt><dd>{{ m.val(o.contact.role) }}</dd>
+            {% if o.contact.public_business_email %}<dt>البريد</dt><dd class="num">{{ o.contact.public_business_email }}</dd>{% endif %}
+            {% if o.contact.public_business_phone %}<dt>الهاتف</dt><dd class="num">{{ o.contact.public_business_phone }}</dd>{% endif %}
+            <dt>مصدر بيانات التواصل</dt><dd><a href="{{ o.contact.source_url }}" rel="noopener noreferrer nofollow" target="_blank">رابط النشر ↗</a> — تأكد بتاريخ {{ o.contact.verified_at[:10] }}</dd>
+          </dl>
+        {% elif contact_ok(o.contact) %}
+          <p>تتوفر وسيلة تواصل مهنية منشورة ومتحقق منها. <a href="/pricing">متاحة لمشتركي الرادار</a>.</p>
+        {% else %}
+          <p class="muted">لا توجد وسيلة تواصل منشورة ومتحقق منها لهذه الفرصة. تواصل عبر القناة المذكورة في المصدر الأصلي.</p>
+        {% endif %}
+      </section>
+
+      {% if o.evidence %}
+      <section class="card"><h2>الأدلة والمراجعات</h2><ul>{% for e in o.evidence %}<li><a href="{{ e.url }}" rel="noopener noreferrer nofollow" target="_blank">{{ e.finding or e.url }}</a> <span class="small muted num">{{ e.checked_at[:10] }}</span></li>{% endfor %}</ul></section>
+      {% endif %}
+    </div>
+
+    <aside class="stack">
+      <section class="card">
+        <h2>اعمل على هذه الفرصة</h2>
+        {% if user %}
+          {% if pipe %}<p>في متابعتك — المرحلة: <strong>{{ STAGES[pipe.stage] }}</strong></p><a class="btn btn-dark" href="/pipeline/{{ pipe.id }}">افتح المتابعة</a>
+          {% else %}<form method="post" action="/radar/{{ o.id }}/save">{{ m.csrf_field() }}<button class="btn btn-primary" type="submit" id="saveOpp">حفظ ومتابعة الفرصة</button></form>{% endif %}
+        {% else %}<p class="muted">احفظ الفرصة، وجهّز عرض السعر، وسجّل التواصل.</p><a class="btn btn-primary" href="/register">أنشئ حسابًا مجانيًا</a>{% endif %}
+      </section>
+      {% if tools %}<section class="card"><h3>أدوات مناسبة</h3><ul>{% for t in tools %}<li><a href="/store/{{ t.slug }}">{{ t.title }}</a></li>{% endfor %}</ul></section>{% endif %}
+      <section class="card">
+        <h3>هل في البيانات خطأ؟</h3>
+        <form method="post" action="/radar/{{ o.id }}/report">{{ m.csrf_field() }}
+          <label>نوع الخطأ<select name="category" required><option value="closed">الفرصة مغلقة أو منتهية</option><option value="wrong_contact">بيانات تواصل خاطئة</option><option value="wrong_data">بيانات المشروع خاطئة</option><option value="rights">اعتراض على النشر/الحقوق</option><option value="other">أخرى</option></select></label>
+          <label>التفاصيل<textarea name="details" maxlength="2000"></textarea></label>
+          <button class="btn btn-outline" type="submit">إرسال البلاغ</button>
+        </form>
+      </section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

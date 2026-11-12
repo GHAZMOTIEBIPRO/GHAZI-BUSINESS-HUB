@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0a1e31" />
+  <meta name="description" content="منصة غازي للأعمال: رادار فرص المقاولات ومتجر أدوات المقاول الرقمية في مكان واحد." />
+  <title>منصة غازي للأعمال | فرص المقاولات والأدوات الرقمية</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip" href="#main">الانتقال للمحتوى</a>
+<div class="shell">
+  <aside class="sidebar" aria-label="القائمة الرئيسية">
+    <a class="logo" href="#home" data-nav="home" aria-label="الصفحة الرئيسية">
+      <span class="logo-mark">غ</span>
+      <span class="logo-text"><strong>غــازي</strong><small>الأعمال والمقاولات</small></span>
+    </a>
+    <p class="nav-caption">مساحة العمل</p>
+    <nav class="nav-list" id="sideNav">
+      <button type="button" data-page="home" class="nav-item active"><span class="ico">⌂</span> الرئيسية</button>
+      <button type="button" data-page="radar" class="nav-item"><span class="ico">⌁</span> رادار الفرص</button>
+      <button type="button" data-page="store" class="nav-item"><span class="ico">▦</span> متجر الأدوات</button>
+      <button type="button" data-page="calculator" class="nav-item"><span class="ico">∑</span> حاسبة التسعير</button>
+      <button type="button" data-page="workspace" class="nav-item"><span class="ico">◇</span> مساحة المقاول <span class="nav-count" id="savedCount">0</span></button>
+    </nav>
+    <div class="side-bottom"><div class="status-pulse"><span></span> نسخة تجريبية تفاعلية</div><p>لا توجد أسعار اشتراكات مفعّلة أو فرص غير موثقة معروضة على أنها متاحة.</p></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <button id="menuToggle" class="mobile-menu" aria-label="فتح القائمة" type="button">☰</button>
+      <div class="breadcrumbs"><span>منصة غازي</span><span class="chev">/</span><strong id="pageCrumb">الرئيسية</strong></div>
+      <div class="topbar-actions"><span class="release">الإصدار التجريبي 0.1</span><span class="avatar">غ</span></div>
+    </header>
+    <main id="main">
+      <section id="home" class="page active" aria-labelledby="homeTitle">
+        <div class="hero">
+          <div class="hero-content">
+            <span class="eyebrow"><i></i> حلول الأعمال الإنشائية</span>
+            <h1 id="homeTitle">من اكتشاف الفرصة إلى <em>تسعير المشروع.</em></h1>
+            <p>منصة سعودية تجمع مسارات البحث عن أعمال المقاولات والتشطيبات مع أدوات احترافية تساعدك في إعداد العرض ومتابعة التكاليف والتحصيل.</p>
+            <div class="hero-actions"><button class="btn btn-accent" data-go="radar">استكشف مصادر الفرص ←</button><button class="btn btn-ghost" data-go="store">تصفح الأدوات الرقمية</button></div>
+          </div>
+          <div class="hero-visual" aria-hidden="true"><div class="blueprint"><div class="bp-pivot"></div><div class="bp-line l1"></div><div class="bp-line l2"></div><div class="bp-line l3"></div><div class="bp-circle"><span>G</span></div><div class="bp-stat s1">فرص <b>↗</b></div><div class="bp-stat s2">تسعير <b>✓</b></div><div class="bp-stat s3">تقارير <b>▥</b></div></div></div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><small>قنوات البحث الموثقة</small><strong>3</strong><span>روابط رسمية ومعلنة</span></div>
+          <div class="metric"><small>أدوات Excel المتاحة</small><strong>4</strong><span>تنزيل فعلي في هذه التجربة</span></div>
+          <div class="metric"><small>الفرص الفردية المنشورة</small><strong id="homeOpCount">0</strong><span>لا تُنشر فرصة دون مراجعتها</span></div>
+          <div class="metric"><small>الملفات التي حفظتها</small><strong id="homeSavedCount">0</strong><span>بيانات متصفحك التجريبية</span></div>
+        </div>
+        <div class="section-top"><div><span class="section-kicker">خدمات المنصة</span><h2>منظومة متصلة لعمل المقاول</h2></div></div>
+        <div class="service-grid">
+          <button class="service-card" data-go="radar"><span class="service-number">01</span><span class="service-icon">⌁</span><h3>الرادار والفرص</h3><p>تخصصات، مناطق، مصادر موثقة وحفظ الفرص المناسبة في ملفك.</p><span class="service-link">الانتقال للرادار ←</span></button>
+          <button class="service-card" data-go="store"><span class="service-number">02</span><span class="service-icon">▦</span><h3>متجر أدوات المقاول</h3><p>أربع أدوات Excel عملية بتكاليف وصيغ جاهزة للتعديل والتخصيص.</p><span class="service-link">استكشف المنتجات ←</span></button>
+          <button class="service-card" data-go="calculator"><span class="service-number">03</span><span class="service-icon">∑</span><h3>حاسبة العرض السريع</h3><p>احسب التكلفة وسعر العرض وهامش الربح والمبلغ شامل الضريبة.</p><span class="service-link">ابدأ الحساب ←</span></button>
+        </div>
+        <div class="notice"><b>مهم عن دقة الفرص:</b> هذه النسخة لا تدّعي جمع فرص مقاولات مباشرة من المنصات الخارجية. توفر قنوات رسمية للبحث وأداة لإدخال الفرص التي تتحقق منها بنفسك. ليست البيانات المحلية منشورة للآخرين أو متزامنة مع خادم.</div>
+      </section>
+      <section id="radar" class="page" aria-labelledby="radarTitle">
+        <div class="page-heading"><div><span class="section-kicker">فرص ذات مصدر قابل للتحقق</span><h1 id="radarTitle">رادار فرص المقاولات</h1><p>انطلق من القنوات المعلنة، ثم أضف فرصة بعد التحقق من المصدر وحالة استقبال العروض.</p></div><button class="btn btn-accent" id="newLeadBtn">+ إضافة فرصة للمراجعة</button></div>
+        <div class="filter-panel"><label>البحث<input id="leadSearch" type="search" placeholder="مشروع، شركة، مدينة أو تخصص" /></label><label>المدينة<select id="cityFilter"><option value="">كل المدن</option><option>الرياض</option><option>جدة</option><option>ينبع</option><option>الدمام</option><option>الخبر</option><option>الجبيل</option><option>المدينة المنورة</option><option>أخرى</option></select></label><label>التخصص<select id="tradeFilter"><option value="">كل التخصصات</option><option>الجبس والأسقف</option><option>البلاط</option><option>الدهانات</option><option>الأبواب</option><option>الصيانة</option><option>عام</option></select></label><label>الحالة<select id="statusFilter"><option value="">كل الحالات</option><option value="pending">بانتظار التحقق</option><option value="verified">راجعتها يدويًا</option></select></label></div>
+        <div class="content-split"><div><div class="small-heading"><h2>فرصي المسجلة</h2><span id="leadCountTag" class="pill muted">0 فرص</span></div><div id="leadList" class="opportunity-list"></div></div><aside class="source-panel"><h3>قنوات البحث المعتمدة</h3><p>مصادر للبحث، وليست فرصًا مفتوحة مؤكدة في الوقت الحالي.</p><div id="sourceList"></div><div class="warning">الجهة المعلنة في المناقصة ليست بالضرورة المقاول الرئيسي، ولا تعني المناقصة تلقائيًا توفر عمل من الباطن.</div></aside></div>
+      </section>
+      <section id="store" class="page" aria-labelledby="storeTitle"><div class="page-heading"><div><span class="section-kicker">أصول رقمية للمقاول</span><h1 id="storeTitle">متجر الأدوات والملفات</h1><p>ملفات Excel بصيغ وحسابات فعلية، قابلة للتعديل والعمل دون اتصال بالإنترنت.</p></div><div class="cart-status">حقيبة الأدوات <strong id="cartCount">0</strong></div></div><div class="catalog-banner"><span>نسخة تجريبية</span> يمكن تنزيل جميع الملفات الآن مجانًا للتقييم. الأسعار الظاهرة فرضيات للبيع مستقبلًا، ولا توجد بوابة دفع أو طلب شراء.</div><div class="product-grid" id="productList"></div><div class="bundle"><div><small>حزمة التشغيل</small><h3>أربع أدوات متكاملة لعمل المقاول</h3><p>تسعير البنود، متابعة المشاريع، المستخلصات والتحصيل، وحساب تكلفة الفرق.</p></div><a class="btn btn-accent" href="products/حزمة_أدوات_المقاول.zip" download>تحميل الحزمة كاملة ↓</a></div></section>
+      <section id="calculator" class="page" aria-labelledby="calcTitle"><div class="page-heading"><div><span class="section-kicker">أداة مرتبطة بمرحلة التسعير</span><h1 id="calcTitle">حاسبة عرض سعر سريعة</h1><p>للتقدير الأولي فقط، ولا تغني عن الحصر الهندسي وجداول الكميات.</p></div></div><div class="calc-grid"><form id="calcForm" class="calc-form"><h2>مدخلات البند</h2><label>وصف البند<input name="description" value="بند تشطيبات" maxlength="80" /></label><div class="two-fields"><label>الكمية<input type="number" name="qty" value="100" min="0" step="any" required /></label><label>الوحدة<select name="unit"><option>م²</option><option>م ط</option><option>م³</option><option>عدد</option><option>باب</option></select></label></div><div class="two-fields"><label>تكلفة المواد للوحدة (ر.س)<input type="number" name="materials" value="0" min="0" step="any" required /></label><label>تكلفة العمالة للوحدة (ر.س)<input type="number" name="labor" value="0" min="0" step="any" required /></label></div><div class="two-fields"><label>مصاريف عامة من قيمة البيع %<input type="number" name="overhead" value="10" min="0" max="90" step="0.5" /></label><label>هامش الربح من قيمة البيع %<input type="number" name="margin" value="15" min="0" max="90" step="0.5" /></label></div><label>ضريبة القيمة المضافة %<input type="number" name="vat" value="15" min="0" max="100" step="0.5" /></label><div class="calc-actions"><button type="submit" class="btn btn-accent">احسب العرض</button><button type="button" class="btn btn-soft" id="copyQuote">نسخ ملخص التسعير</button></div><p class="input-note">يُحسب الربح والمصاريف العامة كنسبة من سعر البيع قبل الضريبة، لا كنسبة زيادة على التكلفة.</p></form><div class="quote-card"><div class="quote-head"><span>ملخص التسعير</span><span class="pill">SAR</span></div><small>إجمالي العرض شامل الضريبة</small><strong class="total" id="grandTotal">0.00 <span>ر.س</span></strong><div class="quote-rows"><div><span>التكلفة المباشرة</span><b id="directCost">0.00</b></div><div><span>سعر العرض قبل الضريبة</span><b id="sellPrice">0.00</b></div><div><span>مخصص المصاريف العامة</span><b id="overheadValue">0.00</b></div><div><span>الربح المستهدف</span><b id="profitValue">0.00</b></div><div><span>الضريبة</span><b id="vatValue">0.00</b></div></div><div class="quote-notice" id="calcWarning">أدخل تكاليف الوحدة ثم احسب العرض.</div><button class="btn btn-ghost full" data-go="store">حمّل نموذج التسعير التفصيلي ←</button></div></div></section>
+      <section id="workspace" class="page" aria-labelledby="workspaceTitle"><div class="page-heading"><div><span class="section-kicker">مساحة تجريبية داخل المتصفح</span><h1 id="workspaceTitle">مساحة المقاول</h1><p>احفظ روابط الفرص وتخصصاتك وجهّز بياناتك للمراجعة. لا يتم رفع بياناتك إلى أي خادم.</p></div></div><div class="workspace-grid"><div class="panel"><h2>تخصصات مؤسستك</h2><p>اختر التخصصات لتمييز الفرص المطابقة لها.</p><div id="specialtyChoices" class="checks"></div><button id="saveTrades" class="btn btn-accent">حفظ تفضيلاتي</button></div><div class="panel"><h2>الفرص المحفوظة</h2><div id="savedLeads"></div></div></div><div class="panel data-panel"><h2>البيانات التجريبية</h2><p>كل البيانات التي تدخلها محفوظة في هذا المتصفح فقط. يمكنك تصديرها احتياطيًا أو محوها، وهي ليست نظامًا آمنًا متعدد المستخدمين.</p><div class="toolbar"><button id="exportData" class="btn btn-soft">تصدير بياناتي JSON</button><button id="resetData" class="btn btn-danger">مسح بيانات التجربة</button></div></div></section>
+    </main>
+    <footer><span>© 2026 منصة غازي للأعمال — نموذج أولي غير منشور تجاريًا</span><span>المحتوى والتصنيف قابلان للتغيير بعد التحقق الميداني ومراجعة الحقوق</span></footer>
+  </div>
+</div>
+<dialog id="leadDialog"><form method="dialog" id="leadForm"><div class="dialog-head"><h2>إضافة فرصة للمراجعة</h2><button class="close" type="button" id="closeLead" aria-label="إغلاق">×</button></div><p class="dialog-note">إضافة محلية لا تُنشر للآخرين. لا تصنّف أي فرصة بأنها متاحة قبل التأكد من مصدرها وحالة التقديم.</p><div class="dialog-fields"><label>اسم الفرصة أو المشروع <input name="title" maxlength="120" required /></label><label>اسم الجهة أو المقاول المسؤول (إن كان معروفًا)<input name="company" maxlength="120" /></label><div class="two-fields"><label>المدينة<select name="city"><option>ينبع</option><option>الرياض</option><option>جدة</option><option>الدمام</option><option>الخبر</option><option>الجبيل</option><option>المدينة المنورة</option><option>أخرى</option></select></label><label>التخصص<select name="trade"><option>الجبس والأسقف</option><option>البلاط</option><option>الدهانات</option><option>الأبواب</option><option>الصيانة</option><option>عام</option></select></label></div><label>رابط المصدر الرسمي أو المعلن<input type="url" name="url" placeholder="https://" required /></label><label>وسيلة تواصل منشورة للعمل (اختياري)<input name="contact" placeholder="بريد الشركة أو هاتفها المعلن" maxlength="150" /></label><label>ملاحظات التحقق<textarea name="notes" rows="3" maxlength="500" placeholder="ما الذي يحتاج تأكيدًا؟ وهل توجد دعوة فعلية لمقاول باطن؟"></textarea></label><label class="inline-check"><input type="checkbox" name="verified"/> <span>راجعت الرابط يدويًا (لا يعني تأكيد إتاحة مقاولة باطن)</span></label></div><div class="dialog-actions"><button type="button" id="cancelLead" class="btn btn-soft">إلغاء</button><button class="btn btn-accent" type="submit">حفظ الفرصة للمراجعة</button></div></form></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="app.js" defer></script>
+</body>
+</html>

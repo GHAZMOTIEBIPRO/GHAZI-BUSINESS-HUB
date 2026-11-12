@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}خطأ {{ code }} — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap"><div class="card mt center"><h1>{{ code }}</h1><p>{{ detail }}</p><a class="btn btn-primary" href="/">الرئيسية</a></div></div>
+{% endblock %}

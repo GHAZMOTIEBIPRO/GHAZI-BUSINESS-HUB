@@ -1,0 +1,33 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}الإدارة — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head row-between"><h1>لوحة الإدارة</h1>
+    <div class="actions"><a class="btn btn-primary" href="/admin/review">قائمة المراجعة ({{ stats.pending }})</a><a class="btn btn-outline" href="/admin/opportunities/new">إدخال فرصة</a>{% if user.role=='admin' %}<a class="btn btn-outline" href="/admin/orders">الطلبات</a>{% endif %}</div></div>
+  <div class="grid g4 mb">
+    <div class="card"><div class="muted small">بانتظار المراجعة</div><div class="stat num">{{ stats.pending }}</div></div>
+    <div class="card"><div class="muted small">جديدة آخر 24 ساعة</div><div class="stat num">{{ stats.new_24h }}</div></div>
+    <div class="card"><div class="muted small">تحتاج إعادة تحقق</div><div class="stat num">{{ stats.stale }}</div></div>
+    <div class="card"><div class="muted small">معتمدة منشورة</div><div class="stat num">{{ stats.approved }}</div></div>
+    <div class="card"><div class="muted small">بلاغات مفتوحة</div><div class="stat num">{{ stats.reports }}</div></div>
+    <div class="card"><div class="muted small">المستخدمون</div><div class="stat num">{{ stats.users }}</div></div>
+    <div class="card"><div class="muted small">طلبات مدفوعة</div><div class="stat num">{{ stats.paid_orders }}</div></div>
+    <div class="card"><div class="muted small">بريد بانتظار الإرسال</div><div class="stat num">{{ stats.outbox }}</div></div>
+  </div>
+  <h2>حالة المصادر</h2>
+  <p class="small muted">نجاح المهمة لا يعني صحة البيانات: الحالة هنا للجلب فقط، وصحة كل سجل تُقرر في المراجعة.</p>
+  <div class="table-wrap mb"><table id="sourcesTable"><thead><tr><th>المصدر</th><th>الحالة</th><th>الحقوق</th><th>آخر تشغيل</th><th>آخر نجاح</th><th>إخفاقات متتالية</th><th>آخر خطأ</th><th></th></tr></thead><tbody>
+  {% for s, h in sources %}<tr id="{{ s.key }}"><td>{{ s.name }}<div class="small muted">{{ s.kind }}</div></td>
+    <td><span class="badge {{ 'b-ok' if h=='ok' else ('b-bad' if h in ('down','late','never_succeeded') else 'b-lead') }}">{{ HEALTH_LABELS[h] }}</span></td>
+    <td class="small">{{ SOURCE_RIGHTS[s.rights] }}</td><td class="num small">{{ ksa(s.last_run_at, '%m-%d %H:%M') }}</td><td class="num small">{{ ksa(s.last_success_at, '%m-%d %H:%M') }}</td>
+    <td class="num">{{ s.consecutive_failures }}</td><td class="small">{{ s.last_error or '—' }}</td>
+    <td>{% if user.role=='admin' and s.kind not in ('manual','csv_import') %}<form method="post" action="/admin/sources/{{ s.id }}/run">{{ m.csrf_field() }}<button class="btn btn-sm btn-outline" type="submit">تشغيل الآن</button></form>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <h2>آخر عمليات الجلب</h2>
+  <div class="table-wrap"><table><thead><tr><th>الوقت</th><th>المصدر</th><th>النتيجة</th><th>جديد</th><th>محدث</th><th>للمراجعة</th><th>السبب</th></tr></thead><tbody>
+  {% for r in runs %}<tr><td class="num small">{{ ksa(r.started_at, '%m-%d %H:%M') }}</td><td>{{ r.source.name }}</td><td>{{ r.outcome }}</td><td class="num">{{ r.items_new }}</td><td class="num">{{ r.items_updated }}</td><td class="num">{{ r.items_to_review }}</td><td class="small">{{ r.reason }}</td></tr>
+  {% else %}<tr><td colspan="7" class="muted">لا عمليات بعد.</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

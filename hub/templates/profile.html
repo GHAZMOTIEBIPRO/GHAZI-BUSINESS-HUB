@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}تفضيلاتي — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><h1>ملف المنشأة والتفضيلات</h1></div>
+  <form class="card stack" method="post" action="/account/profile">{{ m.csrf_field() }}
+    <div class="grid g2"><label>الاسم<input type="text" name="name" value="{{ user.name }}" maxlength="120"></label>
+      <label>اسم المنشأة<input type="text" name="company" value="{{ user.company }}" maxlength="160"></label></div>
+    <fieldset><legend><strong>التخصصات</strong></legend><div class="checks">{% for t in TRADES %}<label class="check"><input type="checkbox" name="trades" value="{{ t }}" {% if t in user.trades %}checked{% endif %}> {{ t }}</label>{% endfor %}</div></fieldset>
+    <fieldset><legend><strong>المدن التي تعمل فيها</strong></legend><div class="checks">{% for c in CITIES %}<label class="check"><input type="checkbox" name="cities" value="{{ c }}" {% if c in user.cities %}checked{% endif %}> {{ c }}</label>{% endfor %}</div></fieldset>
+    <label class="check"><input type="checkbox" name="alerts" value="1" {% if user.alerts_enabled %}checked{% endif %}> أرسل لي تنبيهات بالفرص المطابقة</label>
+    <button class="btn btn-primary" type="submit">حفظ</button>
+  </form>
+  <section class="card mt"><h2>بياناتي</h2><p>يمكنك تنزيل نسخة من كل بياناتك في أي وقت.</p><a class="btn btn-outline" href="/account/export">تصدير بياناتي (JSON)</a></section>
+  <section class="card mt danger-zone"><h2>حذف الحساب</h2><p class="muted">يحذف ملفك ومتابعاتك ومسوداتك. تبقى سجلات الفواتير المدفوعة بلا بيانات شخصية للمدة النظامية.</p>
+    <form method="post" action="/account/delete" data-confirm="سيُحذف حسابك نهائيًا. متأكد؟">{{ m.csrf_field() }}<label>كلمة المرور للتأكيد<input type="password" name="password" required autocomplete="current-password" dir="ltr"></label><button class="btn btn-danger" type="submit">حذف حسابي</button></form></section>
+</div>
+{% endblock %}

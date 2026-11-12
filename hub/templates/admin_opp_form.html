@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}إدخال فرصة — الإدارة{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><p><a href="/admin">← الإدارة</a></p><h1>إدخال فرصة من مصدر موثق</h1>
+    <p class="muted">تدخل الفرصة قائمة المراجعة أولًا. لا تنسخ نصوصًا محمية؛ اكتب ملخصًا واربط المصدر. الحقل غير المؤكد اتركه فارغًا ليظهر «غير معلوم».</p></div>
+  {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" class="card stack">{{ m.csrf_field() }}
+    <div class="grid g2">
+      <label>المصدر<select name="source_id" required>{% for s in sources %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select></label>
+      <label>نوع الفرصة<select name="opportunity_type">{% for k, v in OPP_TYPES.items() %}<option value="{{ k }}" {% if k=='OPPORTUNITY_LEAD' %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+      <label>العنوان<input type="text" name="title" required maxlength="300"></label>
+      <label>رابط المصدر (HTTPS)<input type="url" name="url" required dir="ltr" placeholder="https://"></label>
+      <label>المدينة<select name="city"><option value="">غير معلوم</option>{% for c in CITIES %}<option>{{ c }}</option>{% endfor %}</select></label>
+      <label>الجهة المالكة<input type="text" name="owner_entity" maxlength="200"></label>
+      <label>المقاول الرئيسي<input type="text" name="main_contractor" maxlength="200"></label>
+      <label>الشركة المسؤولة<input type="text" name="responsible_company" maxlength="200"></label>
+      <label>تاريخ الإعلان<input type="date" name="published_at"></label>
+      <label>آخر موعد للتقديم<input type="date" name="deadline_at"></label>
+    </div>
+    <fieldset><legend><strong>التخصصات</strong></legend><div class="checks">{% for t in TRADES %}<label class="check"><input type="checkbox" name="trades" value="{{ t }}"> {{ t }}</label>{% endfor %}</div></fieldset>
+    <label>ملخص (بصياغتك)<textarea name="summary" maxlength="4000"></textarea></label>
+    <fieldset><legend><strong>جهة التواصل المهنية (اختياري — منشورة للعامة فقط)</strong></legend>
+      <div class="grid g2"><label>الاسم المهني<input type="text" name="contact_name" maxlength="160"></label><label>المسمى<input type="text" name="contact_role" maxlength="120"></label>
+        <label>بريد العمل المنشور<input type="email" name="contact_email" dir="ltr"></label><label>هاتف العمل المنشور<input type="text" name="contact_phone" dir="ltr" maxlength="30"></label>
+        <label>رابط نشر بيانات التواصل (HTTPS)<input type="url" name="contact_source_url" dir="ltr"></label></div>
+      <label class="check"><input type="checkbox" name="contact_display_allowed" value="1"> تحققت أن الجهة نشرتها للعامة لغرض التواصل التجاري ويجوز عرضها</label></fieldset>
+    <fieldset><legend><strong>دليل (مطلوب لـ«باطن مؤكد»)</strong></legend>
+      <div class="grid g2"><label>رابط الدليل<input type="url" name="evidence_url" dir="ltr"></label><label>ما الذي يثبته؟<input type="text" name="evidence_finding" maxlength="500"></label></div></fieldset>
+    <button class="btn btn-primary" type="submit">إرسال للمراجعة</button>
+  </form>
+</div>
+{% endblock %}

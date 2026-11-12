@@ -1,0 +1,30 @@
+{% macro type_badge(t) -%}
+{% set cls = {"OPEN_TENDER":"b-tender","AWARDED_PROJECT":"b-awarded","SUBCONTRACT_CONFIRMED":"b-confirmed","OPPORTUNITY_LEAD":"b-lead","CLOSED":"b-closed","UNKNOWN":"b-lead"}[t] %}
+<span class="badge {{ cls }}">{{ OPP_TYPES[t] }}</span>
+{%- endmacro %}
+
+{% macro freshness(o) -%}
+{% if o.review_due_at and o.review_due_at < now_utc() %}<span class="badge b-bad">تحتاج إعادة تحقق</span>
+{% else %}<span class="badge b-ok">آخر تحقق: {{ ago(o.verified_at) }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro val(v) -%}{% if v %}{{ v }}{% else %}<em class="missing">غير معلوم</em>{% endif %}{%- endmacro %}
+
+{% macro opp_card(o, level=None, saved=False) -%}
+<article class="card opp">
+  <div class="opp-top">
+    <h3><a href="/radar/{{ o.id }}">{{ o.title }}</a></h3>
+    {% if level %}<span class="badge b-{{ level }}">{{ MATCH_LABELS[level] }}</span>{% endif %}
+  </div>
+  <div class="tags">{{ type_badge(o.opportunity_type) }} {{ freshness(o) }}{% if saved %}<span class="badge b-low">في متابعتك</span>{% endif %}</div>
+  <div class="opp-meta">
+    <span>📍 {{ val(o.city) }}{% if o.region %} — {{ o.region }}{% endif %}</span>
+    <span>الجهة: {{ val(o.owner_entity) }}</span>
+    {% if o.deadline_at %}<span>آخر موعد: <span class="num">{{ ksa(o.deadline_at) }}</span></span>{% endif %}
+    <span>المصدر: {{ o.source.name }}</span>
+  </div>
+  {% if o.trades %}<div class="tags">{% for t in o.trades %}<span class="badge b-lead">{{ t }}</span>{% endfor %}</div>{% endif %}
+</article>
+{%- endmacro %}
+
+{% macro csrf_field() -%}<input type="hidden" name="csrf" value="{{ csrf }}">{%- endmacro %}

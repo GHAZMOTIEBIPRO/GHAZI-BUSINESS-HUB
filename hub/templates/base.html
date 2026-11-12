@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}غازي للأعمال — فرص المقاولات وأدوات المقاول{% endblock %}</title>
+<meta name="description" content="{% block description %}منصة سعودية تجمع فرص مقاولات التشطيبات والصيانة من مصادر موثقة مع أدوات تسعير ومستخلصات ومتابعة مشاريع.{% endblock %}">
+<meta name="theme-color" content="#0b1f33">
+<meta property="og:title" content="{{ self.title() }}">
+<meta property="og:description" content="{{ self.description() }}">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ar_SA">
+<link rel="canonical" href="{{ settings.base_url }}{{ path }}">
+<link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+<link rel="preload" href="/static/fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/app.css">
+{% block robots %}{% endblock %}
+</head>
+<body>
+<a class="skip" href="#main">الانتقال إلى المحتوى</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="/static/logo.svg" width="40" height="40" alt=""><span>غازي للأعمال<small>فرص المقاولات وأدوات المقاول</small></span></a>
+    <button class="menu-btn" id="menuBtn" type="button" aria-controls="siteNav" aria-expanded="false" aria-label="القائمة">☰</button>
+    <nav class="nav" id="siteNav" aria-label="القائمة الرئيسية">
+      {% set links = [("/radar","رادار الفرص"),("/store","متجر الأدوات"),("/pricing","الاشتراكات"),("/calculator","حاسبة التسعير"),("/sources","المصادر")] %}
+      {% for href,label in links %}<a href="{{ href }}" {% if path.startswith(href) %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+      {% if user %}
+        <a href="/dashboard" {% if path=='/dashboard' %}aria-current="page"{% endif %}>لوحتي</a>
+        <a class="bell" href="/notifications">التنبيهات{% if unread %}<b>{{ unread }}</b>{% endif %}</a>
+        {% if user.role in ('admin','reviewer') %}<a href="/admin">الإدارة</a>{% endif %}
+        <form class="inline" method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="linklike" type="submit">خروج</button></form>
+      {% else %}
+        <a href="/login">دخول</a>
+        <a class="cta" href="/register">إنشاء حساب مجاني</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <div class="wrap">{% if request.query_params.get('msg') %}<div class="flash" role="status">{{ request.query_params.get('msg') }}</div>{% endif %}</div>
+  {% block content %}{% endblock %}
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <div><strong>غازي للأعمال</strong><p>فرص مقاولات التشطيبات والصيانة من مصادر قابلة للتحقق، وأدوات عمل يومية للمقاول السعودي.</p>
+      <p class="small">كل فرصة تُعرض برابط مصدرها وتاريخ آخر تحقق. لا نخترع جهات اتصال أو حالات مشاريع.</p></div>
+    <div><strong>المنصة</strong><br><a href="/radar">الرادار</a><br><a href="/store">المتجر</a><br><a href="/pricing">الاشتراكات</a><br><a href="/sources">المصادر ومنهجية التحقق</a></div>
+    <div><strong>السياسات</strong><br><a href="/privacy">الخصوصية</a><br><a href="/terms">الشروط</a><br><a href="/refunds">الاسترداد</a><br><a href="/about">عن المنصة</a></div>
+  </div>
+</footer>
+<script src="/static/app.js" defer></script>
+</body>
+</html>

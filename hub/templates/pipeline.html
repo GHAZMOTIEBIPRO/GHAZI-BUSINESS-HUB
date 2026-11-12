@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}متابعة الفرص — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap"><div class="page-head row-between"><h1>متابعة الفرص</h1><a class="btn btn-outline" href="/quotes">عروض الأسعار</a></div>
+{% if rows %}<div class="table-wrap"><table><thead><tr><th>الفرصة</th><th>المرحلة</th><th>المتابعة القادمة</th><th>آخر تحديث</th></tr></thead><tbody>
+{% for p in rows %}<tr><td><a href="/pipeline/{{ p.id }}">{{ p.opportunity.title }}</a>{% if p.opportunity.opportunity_type=='CLOSED' %} <span class="badge b-closed">أُغلقت</span>{% endif %}</td>
+<td><span class="stage on">{{ STAGES[p.stage] }}</span></td><td class="num">{{ ksa(p.next_action_at) }}</td><td class="num">{{ ksa(p.updated_at) }}</td></tr>{% endfor %}
+</tbody></table></div>
+{% else %}<div class="card"><p>لم تحفظ أي فرصة بعد. افتح <a href="/radar">الرادار</a> واختر «حفظ ومتابعة الفرصة».</p></div>{% endif %}
+</div>
+{% endblock %}

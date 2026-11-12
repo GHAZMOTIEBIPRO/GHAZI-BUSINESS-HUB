@@ -1,0 +1,22 @@
+# Optional scheduler: calls the protected refresh endpoint of a deployed instance.
+# Inert until the owner sets the HUB_BASE_URL variable and HUB_JOBS_TOKEN secret.
+name: radar-refresh
+on:
+  schedule:
+    - cron: "17 * * * *"   # hourly; each source decides if it is due
+  workflow_dispatch:
+permissions: {}
+jobs:
+  refresh:
+    if: ${{ vars.HUB_BASE_URL != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Trigger refresh
+        env:
+          URL: ${{ vars.HUB_BASE_URL }}
+          TOKEN: ${{ secrets.HUB_JOBS_TOKEN }}
+        run: |
+          code=$(curl -s -o out.json -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" "$URL/internal/jobs/refresh")
+          cat out.json
+          test "$code" = "200"

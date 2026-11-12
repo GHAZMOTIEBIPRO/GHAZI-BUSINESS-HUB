@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}التنبيهات — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap"><div class="page-head"><h1>التنبيهات</h1></div>
+{% if rows %}<div class="table-wrap"><table><thead><tr><th>التنبيه</th><th>التاريخ</th></tr></thead><tbody>
+{% for n in rows %}<tr><td>{% if not n.read %}<span class="badge b-high">جديد</span> {% endif %}<a href="{{ n.link }}">{{ n.title }}</a></td><td class="num">{{ ksa(n.created_at, '%Y-%m-%d %H:%M') }}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="card"><p class="muted">لا توجد تنبيهات بعد.</p></div>{% endif %}
+</div>
+{% endblock %}

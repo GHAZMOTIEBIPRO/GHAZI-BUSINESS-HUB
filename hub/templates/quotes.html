@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}عروض الأسعار — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap"><div class="page-head row-between"><h1>مسودات عروض الأسعار</h1>
+  <form method="post" action="/quotes">{{ m.csrf_field() }}<button class="btn btn-primary" type="submit">عرض جديد</button></form></div>
+{% if rows %}<div class="table-wrap"><table><thead><tr><th>#</th><th>المشروع</th><th>العميل</th><th>آخر تعديل</th></tr></thead><tbody>
+{% for q in rows %}<tr><td><a href="/quotes/{{ q.id }}">{{ q.id }}</a></td><td>{{ q.project or '—' }}</td><td>{{ q.client or '—' }}</td><td class="num">{{ ksa(q.updated_at) }}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="card"><p class="muted">لا توجد مسودات بعد.</p></div>{% endif %}
+</div>
+{% endblock %}

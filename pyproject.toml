@@ -1,0 +1,27 @@
+[project]
+name = "ghazi-business-hub"
+version = "0.2.0"
+description = "Saudi contractor opportunity radar + digital tools store (Arabic RTL)"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 180  # long Arabic UI strings; code itself stays short
+target-version = "py312"
+extend-exclude = [".venv", "products/build", "products/dist", "original"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "S", "UP"]
+ignore = [
+  "S101",   # assert in tests
+  "S603", "S607",  # subprocess with fixed argv (LibreOffice, backup script)
+  "B008",   # FastAPI Depends()/Form() defaults
+  "S311",   # random not used for security
+  "UP017",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106", "S107", "S108", "B017"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

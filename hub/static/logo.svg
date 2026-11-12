@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="غازي للأعمال">
+  <rect width="48" height="48" rx="11" fill="#b4572a"/>
+  <!-- stepped masonry blocks rising like a building section -->
+  <rect x="9" y="29" width="10" height="10" rx="1.5" fill="#f5f1ea"/>
+  <rect x="20" y="22" width="10" height="17" rx="1.5" fill="#f5f1ea"/>
+  <rect x="31" y="15" width="8" height="24" rx="1.5" fill="#0b1f33"/>
+  <!-- radar arc: finding the opportunity -->
+  <path d="M10 22a15 15 0 0 1 15-13" fill="none" stroke="#0b1f33" stroke-width="3" stroke-linecap="round"/>
+  <path d="M14 23a10 10 0 0 1 10-9" fill="none" stroke="#0b1f33" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+</svg>

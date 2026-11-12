@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}مشترياتي وتنزيلاتي{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><h1>مشترياتي وتنزيلاتي</h1>
+    {% if sub %}<p>اشتراكك <strong>{{ PLANS[sub.plan].title }}</strong> فعّال حتى <span class="num">{{ ksa(sub.ends_at) }}</span>.</p>{% endif %}</div>
+  <section class="card mb"><h2>ملفاتي</h2>
+    {% if products %}<div class="table-wrap"><table><thead><tr><th>الأداة</th><th>التنزيلات</th><th></th></tr></thead><tbody>
+    {% for p in products %}<tr><td>{{ p.title }}</td><td class="num">{{ used[p.id] }} / {{ settings.download_limit_per_product }}</td>
+      <td><form method="post" action="/downloads/{{ p.slug }}">{{ m.csrf_field() }}<button class="btn btn-sm btn-primary" type="submit" data-slug="{{ p.slug }}">تنزيل</button></form></td></tr>{% endfor %}
+    </tbody></table></div><p class="small muted mt">كل ضغطة تنشئ رابطًا لمرة واحدة صالحًا 5 دقائق ومرتبطًا بحسابك.</p>
+    {% else %}<p class="muted">لا توجد ملفات مملوكة بعد. <a href="/store">تصفّح المتجر</a>.</p>{% endif %}
+  </section>
+  <section class="card"><h2>الطلبات</h2>
+    {% if rows %}<div class="table-wrap"><table><thead><tr><th>#</th><th>البند</th><th>الإجمالي</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>
+    {% for o in rows %}<tr><td><a href="/orders/{{ o.id }}">{{ o.id }}</a></td><td>{{ o.product.title if o.product else 'اشتراك ' ~ PLANS[o.plan].title }}</td><td class="num">{{ money(o.total) }}</td>
+      <td>{{ {'paid':'مدفوع','pending':'بانتظار الدفع','failed':'فشل','refunded':'مسترد','cancelled':'ملغى'}[o.status] }}</td><td class="num">{{ ksa(o.created_at) }}</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<p class="muted">لا طلبات.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

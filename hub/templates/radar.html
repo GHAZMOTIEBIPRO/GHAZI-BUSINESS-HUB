@@ -1,0 +1,33 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}رادار فرص المقاولات — غازي للأعمال{% endblock %}
+{% block description %}فرص مقاولات وتشطيبات وصيانة في السعودية بمصادرها وتواريخ التحقق، قابلة للتصفية حسب المدينة والتخصص ونوع الفرصة.{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head">
+    <h1>رادار فرص المقاولات</h1>
+    <p class="muted">كل نتيجة معتمدة بعد مراجعة مصدرها. المنافسة المفتوحة لا تعني وجود عمل باطن، والمشروع المُرسى لا يعني أن المقاول الرئيسي يطلب مقاولين.</p>
+  </div>
+  <form class="card filters" method="get" action="/radar" role="search">
+    <label>بحث<input type="search" name="q" value="{{ f.q }}" placeholder="مشروع، جهة، مقاول…" maxlength="80"></label>
+    <label>المدينة<select name="city"><option value="">كل المدن</option>{% for c in CITIES %}<option {% if f.city==c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+    <label>المنطقة<select name="region"><option value="">كل المناطق</option>{% for r in regions %}<option {% if f.region==r %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></label>
+    <label>التخصص<select name="trade"><option value="">كل التخصصات</option>{% for t in TRADES %}<option {% if f.trade==t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+    <label>نوع الفرصة<select name="type"><option value="">كل الأنواع</option>{% for k,v in OPP_TYPES.items() %}<option value="{{ k }}" {% if f.type==k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+    <div class="actions"><button class="btn btn-dark" type="submit">تطبيق</button><a class="btn btn-outline" href="/radar">مسح</a></div>
+    <label class="check"><input type="checkbox" name="show" value="all" {% if f.show=='all' %}checked{% endif %}> إظهار الفرص المغلقة</label>
+  </form>
+
+  <div class="row-between mt"><p class="muted" id="resultCount"><span class="num">{{ total }}</span> نتيجة{% if user %} — مرتبة حسب مطابقتها لتفضيلاتك{% endif %}</p>
+    {% if not user %}<a href="/register">سجّل مجانًا لترتيب النتائج حسب تخصصك ←</a>{% elif not user.trades %}<a href="/account/profile">حدّد تخصصاتك لترتيب النتائج ←</a>{% endif %}</div>
+
+  {% if items %}
+  <div class="grid g2" id="results">{% for o, level, reasons in items %}{{ m.opp_card(o, level if user else None, o.id in saved_ids) }}{% endfor %}</div>
+  {% if pages > 1 %}<nav class="actions mt" aria-label="الصفحات">{% for p in range(1, pages+1) %}<a class="btn btn-sm {{ 'btn-dark' if p==page else 'btn-outline' }}" href="?{{ qs }}&amp;page={{ p }}">{{ p }}</a>{% endfor %}</nav>{% endif %}
+  {% else %}
+  <div class="card center" id="results">
+    <h2>لا توجد نتائج مطابقة</h2>
+    <p class="muted">لا ننشر إلا الفرص التي راجعنا مصدرها. جرّب توسيع الفلاتر، أو تابع القنوات الرسمية مباشرة من <a href="/sources">صفحة المصادر</a>.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

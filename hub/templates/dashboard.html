@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}لوحتي — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head row-between">
+    <div><h1>أهلًا {{ user.name }}</h1><p class="muted">باقتك: <strong>{{ plan.title }}</strong>{% if plan.ends_at %} حتى <span class="num">{{ ksa(plan.ends_at) }}</span>{% endif %}</p></div>
+    <div class="actions"><a class="btn btn-outline" href="/account/profile">تفضيلاتي</a><a class="btn btn-outline" href="/account/orders">مشترياتي</a></div>
+  </div>
+  {% if needs_profile %}<div class="info mb">حدّد تخصصاتك ومدنك لتظهر لك الفرص المطابقة وتصلك تنبيهاتها. <a href="/account/profile">حدّدها الآن ←</a></div>{% endif %}
+  <div class="grid g4 stats mb">
+    {% for key in ['saved','pricing','quote_sent','won'] %}<a class="card card-link" href="/pipeline"><div class="muted small">{{ STAGES[key] }}</div><div class="stat num">{{ stage_counts.get(key, 0) }}</div></a>{% endfor %}
+  </div>
+  <div class="split">
+    <section><div class="row-between"><h2>فرص مطابقة لتخصصك</h2><a href="/radar">كل الفرص ←</a></div>
+      {% if matches %}<div class="stack">{% for o, level, reasons in matches %}{{ m.opp_card(o, level) }}{% endfor %}</div>
+      {% else %}<div class="card"><p class="muted">لا توجد فرص معتمدة مطابقة لتخصصاتك الآن. سنبلغك عند اعتماد فرصة مطابقة.</p></div>{% endif %}
+    </section>
+    <aside class="stack">
+      <section class="card"><h3>متابعات قادمة</h3>{% if upcoming %}<ul>{% for p in upcoming %}<li><a href="/pipeline/{{ p.id }}">{{ p.opportunity.title }}</a> <span class="num small">{{ ksa(p.next_action_at) }}</span></li>{% endfor %}</ul>{% else %}<p class="muted small">لا توجد مواعيد متابعة.</p>{% endif %}</section>
+      <section class="card"><h3>آخر التنبيهات</h3>{% if notes %}<ul>{% for n in notes %}<li><a href="{{ n.link }}">{{ n.title }}</a></li>{% endfor %}</ul>{% else %}<p class="muted small">لا تنبيهات.</p>{% endif %}</section>
+      <section class="card"><h3>أدوات سريعة</h3><div class="actions"><form method="post" action="/quotes">{{ m.csrf_field() }}<button class="btn btn-sm btn-outline" type="submit">عرض سعر جديد</button></form><a class="btn btn-sm btn-outline" href="/calculator">الحاسبة</a></div></section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

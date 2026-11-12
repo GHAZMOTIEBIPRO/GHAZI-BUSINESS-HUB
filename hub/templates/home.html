@@ -1,0 +1,56 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block content %}
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <p class="kicker">للمقاولين ومؤسسات التشطيبات والصيانة</p>
+      <h1>اعثر على الفرصة، سعّرها، وتابعها حتى الترسية — في مكان واحد.</h1>
+      <p class="lead">رادار لفرص الجبس والبلاط والدهانات والأبواب والترميم والصيانة من مصادر قابلة للتحقق، مربوط بأدوات تسعير ومستخلصات ومتابعة مشاريع تعمل حتى دون إنترنت.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="/radar">تصفّح الفرص</a>
+        <a class="btn btn-outline" href="{{ '/dashboard' if user else '/register' }}">{{ 'لوحتي' if user else 'ابدأ مجانًا' }}</a>
+      </div>
+    </div>
+    <div class="hero-panel">
+      <h2>ما الذي يميّز كل فرصة لدينا؟</h2>
+      <ul>
+        <li>رابط المصدر الأصلي وتاريخ آخر تحقق.</li>
+        <li>تصنيف صريح: منافسة مفتوحة، مشروع مُرسى، طلب باطن مؤكد، أو مؤشر غير مؤكد.</li>
+        <li>الحقول الناقصة تظهر «غير معلوم» — لا نخمّن جهات اتصال.</li>
+        <li>مراجعة بشرية قبل النشر، وزر للإبلاغ عن أي خطأ.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section"><div class="wrap">
+  <div class="grid g3">
+    <div class="card"><div class="muted small">فرص معتمدة الآن</div><div class="stat num">{{ stats.opps }}</div><p class="small muted">كل واحدة لها مصدر وتاريخ تحقق.</p></div>
+    <div class="card"><div class="muted small">أدوات جاهزة ومختبرة</div><div class="stat num">{{ stats.products }}</div><p class="small muted">ملفات Excel مختبرة المعادلات قبل البيع.</p></div>
+    <div class="card"><div class="muted small">مصادر مسجلة</div><div class="stat num">{{ stats.sources }}</div><p class="small muted"><a href="/sources">حالة كل مصدر وحقوقه</a></p></div>
+  </div>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <h2>كيف تعمل المنصة</h2>
+  <div class="grid g4">
+    <div class="card"><h3>1. حدّد تخصصك ومدنك</h3><p class="muted">الجبس، البلاط، الدهانات، الأبواب، الترميم، الصيانة.</p></div>
+    <div class="card"><h3>2. استلم الفرص المطابقة</h3><p class="muted">تنبيه داخل المنصة وبالبريد للمشتركين، مع سبب المطابقة.</p></div>
+    <div class="card"><h3>3. جهّز عرض السعر</h3><p class="muted">مسودة عرض من الفرصة مباشرة، تُصدّر Excel جاهزًا للطباعة.</p></div>
+    <div class="card"><h3>4. تابع حتى التنفيذ</h3><p class="muted">سجّل التواصل والمراحل، ثم المستخلصات والتحصيل.</p></div>
+  </div>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <div class="row-between"><h2>أحدث الفرص المعتمدة</h2><a href="/radar">عرض الكل ←</a></div>
+  {% if latest %}<div class="grid g2">{% for o in latest %}{{ m.opp_card(o) }}{% endfor %}</div>
+  {% else %}<div class="card"><p>لا توجد فرص معتمدة منشورة حاليًا. ننشر فقط ما مرّ بمراجعة المصدر — <a href="/sources">اعرف كيف نتحقق</a>.</p></div>{% endif %}
+</div></section>
+
+<section class="section"><div class="wrap">
+  <div class="row-between"><h2>أدوات المقاول</h2><a href="/store">المتجر ←</a></div>
+  <div class="grid g4">{% for p in products %}
+    <a class="card card-link" href="/store/{{ p.slug }}"><div class="product-icon">XLS</div><h3>{{ p.title }}</h3><p class="small muted">{{ p.summary }}</p></a>
+  {% endfor %}</div>
+</div></section>
+{% endblock %}

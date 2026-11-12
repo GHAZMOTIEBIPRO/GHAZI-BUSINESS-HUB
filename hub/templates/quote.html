@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}مسودة عرض سعر #{{ q.id }}{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head row-between"><div><p><a href="/quotes">← العروض</a></p><h1>مسودة عرض سعر #{{ q.id }}</h1></div>
+    <a class="btn btn-dark" href="/quotes/{{ q.id }}/xlsx" id="quoteXlsx">تنزيل Excel جاهز للطباعة</a></div>
+  <form method="post" action="/quotes/{{ q.id }}" class="stack">{{ m.csrf_field() }}
+    <section class="card grid g2">
+      <label>العميل / المقاول الرئيسي<input type="text" name="client" value="{{ q.client }}" maxlength="200"></label>
+      <label>المشروع<input type="text" name="project" value="{{ q.project }}" maxlength="300"></label>
+      <label>صلاحية العرض (يوم)<input type="number" name="validity_days" value="{{ q.validity_days }}" min="1" max="365"></label>
+      <label>نسبة الضريبة %<input type="number" name="vat_rate" value="{{ (q.vat_rate*100)|round(2) }}" min="0" max="100" step="0.5"></label>
+    </section>
+    <section class="card">
+      <h2>البنود</h2>
+      <div class="table-wrap"><table class="qtable" id="qlines"><thead><tr><th>الوصف</th><th>الوحدة</th><th>الكمية</th><th>سعر الوحدة</th></tr></thead><tbody>
+      {% for line in q.lines %}<tr><td class="desc" data-l="الوصف"><input type="text" name="desc" value="{{ line.desc }}" maxlength="200" aria-label="الوصف"></td>
+        <td data-l="الوحدة"><input type="text" name="unit" value="{{ line.unit }}" maxlength="20" aria-label="الوحدة"></td>
+        <td data-l="الكمية"><input type="number" name="qty" value="{{ line.qty if line.qty is not none else '' }}" min="0" step="any" aria-label="الكمية"></td>
+        <td data-l="سعر الوحدة"><input type="number" name="unit_price" value="{{ line.unit_price if line.unit_price is not none else '' }}" min="0" step="any" aria-label="سعر الوحدة"></td></tr>{% endfor %}
+      </tbody></table></div>
+      <div class="actions mt"><button class="btn btn-sm btn-outline" type="button" id="addLine" data-max="{{ max_lines }}">+ بند</button></div>
+      <label class="mt">خصم (ر.س)<input type="number" name="discount" value="{{ q.discount }}" min="0" step="any"></label>
+    </section>
+    <section class="card" id="quoteTotals">
+      {% if t.missing %}<p class="notice">{{ t.missing }} بند بلا كمية أو سعر — لا يدخل الإجمالي.</p>{% endif %}
+      {% if t.discount_too_big %}<p class="error">الخصم أكبر من المجموع.</p>{% endif %}
+      <div class="result-row"><span>المجموع</span><b class="num">{{ money(t.subtotal) }}</b></div>
+      <div class="result-row"><span>بعد الخصم</span><b class="num">{{ money(t.net) }}</b></div>
+      <div class="result-row"><span>الضريبة</span><b class="num">{{ money(t.vat) }}</b></div>
+      <div class="result-row"><span>الإجمالي</span><b class="num result-total">{{ money(t.total) }}</b></div>
+      <button class="btn btn-primary mt" type="submit">حفظ وإعادة الحساب</button>
+    </section>
+  </form>
+</div>
+{% endblock %}

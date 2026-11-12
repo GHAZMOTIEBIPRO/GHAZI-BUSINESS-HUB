@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}متجر أدوات المقاول — Excel للتسعير والمستخلصات والمشاريع{% endblock %}
+{% block description %}أدوات Excel عربية مختبرة المعادلات: تسعير التشطيبات، تكاليف المشاريع، المستخلصات بالمحتجزات، تكلفة العمالة، عروض الأسعار، الربحية ومتابعة التنفيذ.{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><h1>متجر أدوات المقاول</h1>
+    <p class="muted">ملفات Excel عربية (من اليمين لليسار) بمعادلات مختبرة آليًا وخلايا محمية وتنسيق طباعة A4. تعمل بعد التنزيل دون إنترنت ودون اشتراك. جرّب العينة قبل الشراء.</p></div>
+  {% if not settings.payments_live_enabled %}<div class="notice mb">المدفوعات في وضع التجربة (Sandbox): لا تُحصّل أي مبالغ حقيقية حاليًا.</div>{% endif %}
+  <div class="grid g3">{% for p in products %}
+    <article class="card plan">
+      <div class="row-between"><span class="badge b-lead">{{ p.category }}</span>{% if p.id in owned %}<span class="badge b-ok">تملكه</span>{% endif %}</div>
+      <h2><a href="/store/{{ p.slug }}">{{ p.title }}</a></h2>
+      <p class="muted">{{ p.summary }}</p>
+      {% if p.status == 'ready' %}
+        <div class="price num">{{ money(p.price) }} <small class="small muted">ر.س {{ 'قبل الضريبة' if settings.vat_registered else '' }}</small></div>
+        <div class="actions"><a class="btn btn-primary" href="/store/{{ p.slug }}">التفاصيل</a><a class="btn btn-outline" href="/samples/{{ p.slug }}.xlsx">تنزيل عينة</a></div>
+      {% else %}<span class="badge b-warn">غير متاح: بانتظار مراجعة قانونية</span>{% endif %}
+    </article>{% endfor %}
+  </div>
+</div>
+{% endblock %}

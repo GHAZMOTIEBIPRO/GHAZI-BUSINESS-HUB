@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}الاشتراكات — غازي للأعمال{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><h1>الاشتراكات</h1><p class="muted">ابدأ مجانًا. الاشتراك لا يضمن وجود فرص بعدد معين؛ ما نضمنه هو أن كل فرصة منشورة لها مصدر وتاريخ تحقق.</p></div>
+  {% if not settings.payments_live_enabled %}<div class="notice mb">وضع تجريبي: الاشتراك يُفعّل عبر بوابة Sandbox دون تحصيل مبالغ حقيقية.</div>{% endif %}
+  <div class="grid g3">
+    {% set feats = {
+      'free': ['تصفح الفرص المعتمدة وروابط مصادرها','حفظ ومتابعة الفرص ومسودات عروض الأسعار','تنبيهات داخل المنصة','حاسبة التسعير وعينات الأدوات'],
+      'radar': ['كل مزايا المجاني','جهات التواصل المهنية المنشورة والمتحقق منها','تنبيهات بالبريد للفرص المطابقة','أولوية في معالجة البلاغات'],
+      'pro': ['كل مزايا رادار المقاول','تنزيل جميع أدوات المتجر طوال الاشتراك','الملفات المنزّلة تبقى معك بعد انتهائه','دعم في تهيئة الأدوات'] } %}
+    {% for key in ['free','radar','pro'] %}{% set pl = PLANS[key] %}
+    <article class="card plan {{ 'featured' if key=='radar' }}">
+      <h2>{{ pl.title }}</h2>
+      <div class="price num">{{ money(breakdown[key][2]) if pl.price else '0' }} <small class="small muted">ر.س / شهر</small></div>
+      <ul>{% for f in feats[key] %}<li>{{ f }}</li>{% endfor %}</ul>
+      {% if key=='free' %}<a class="btn btn-outline" href="{{ '/dashboard' if user else '/register' }}">{{ 'لوحتي' if user else 'ابدأ مجانًا' }}</a>
+      {% elif user %}<form method="post" action="/buy/plan/{{ key }}">{{ m.csrf_field() }}<button class="btn {{ 'btn-primary' if key=='radar' else 'btn-dark' }}" type="submit">{{ 'تجديد/تمديد' if plan.key==key else 'اشترك' }}{{ ' (تجريبي)' if not settings.payments_live_enabled }}</button></form>
+      {% else %}<a class="btn btn-primary" href="/login?next=/pricing">سجّل للاشتراك</a>{% endif %}
+    </article>{% endfor %}
+  </div>
+  <p class="small muted mt">الاشتراك شهري ويُجدد يدويًا في هذه المرحلة (لا خصم تلقائي). {% if not settings.vat_registered %}الأسعار دون ضريبة لأن البائع غير مسجل حاليًا.{% endif %}</p>
+</div>
+{% endblock %}

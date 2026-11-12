@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}الطلبات — الإدارة{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head row-between"><h1>الطلبات والإيرادات</h1><a class="btn btn-outline" href="/admin">← الإدارة</a></div>
+  <div class="grid g4 mb">
+    <div class="card"><div class="muted small">مدفوع (ر.س)</div><div class="stat num">{{ money(totals.get('paid', 0)) }}</div></div>
+    <div class="card"><div class="muted small">مسترد (ر.س)</div><div class="stat num">{{ money(totals.get('refunded', 0)) }}</div></div>
+    <div class="card"><div class="muted small">اشتراكات فعالة</div><div class="stat num">{{ subs }}</div></div>
+    <div class="card"><div class="muted small">تراخيص منتجات</div><div class="stat num">{{ ents }}</div></div>
+  </div>
+  {% if not settings.payments_live_enabled %}<p class="notice mb">كل الأرقام من بوابة Sandbox: ليست إيرادات حقيقية.</p>{% endif %}
+  <div class="table-wrap"><table><thead><tr><th>#</th><th>المستخدم</th><th>البند</th><th>الإجمالي</th><th>الحالة</th><th>البوابة</th><th>التاريخ</th><th></th></tr></thead><tbody>
+  {% for o in rows %}<tr><td>{{ o.id }}</td><td class="num">{{ o.user_id }}</td><td>{{ o.product.title if o.product else 'اشتراك ' ~ o.plan }}</td><td class="num">{{ money(o.total) }}</td><td>{{ o.status }}</td><td>{{ o.provider }}</td><td class="num">{{ ksa(o.created_at) }}</td>
+    <td>{% if o.status=='paid' %}<form method="post" action="/admin/orders/{{ o.id }}/refund" data-confirm="استرداد الطلب وإلغاء الصلاحيات؟">{{ m.csrf_field() }}<button class="btn btn-sm btn-outline" type="submit">استرداد</button></form>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="8" class="muted">لا طلبات.</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

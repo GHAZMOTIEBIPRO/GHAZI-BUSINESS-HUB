@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}إنشاء حساب — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap"><div class="card mt" id="authCard">
+  <h1>إنشاء حساب مجاني</h1>
+  {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/register">{{ m.csrf_field() }}
+    <label>الاسم<input type="text" name="name" required maxlength="120" autocomplete="name" value="{{ form.name or '' }}"></label>
+    <label>اسم المنشأة (اختياري)<input type="text" name="company" maxlength="160" autocomplete="organization" value="{{ form.company or '' }}"></label>
+    <label>البريد الإلكتروني<input type="email" name="email" required autocomplete="email" dir="ltr" value="{{ form.email or '' }}"></label>
+    <label>كلمة المرور (10 أحرف على الأقل)<input type="password" name="password" required minlength="10" autocomplete="new-password" dir="ltr"></label>
+    <label class="check"><input type="checkbox" name="agree" value="1" required> أوافق على <a href="/terms">الشروط</a> و<a href="/privacy">سياسة الخصوصية</a></label>
+    <button class="btn btn-primary" type="submit">إنشاء الحساب</button>
+  </form>
+  <p class="mt">لديك حساب؟ <a href="/login">سجّل الدخول</a></p>
+</div></div>
+{% endblock %}

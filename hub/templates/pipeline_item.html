@@ -1,0 +1,38 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}{{ p.opportunity.title }} — متابعتي{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><p><a href="/pipeline">← متابعة الفرص</a></p><h1>{{ p.opportunity.title }}</h1>
+    <div class="tags">{{ m.type_badge(p.opportunity.opportunity_type) }} {{ m.freshness(p.opportunity) }} <a href="/radar/{{ p.opportunity.id }}">تفاصيل الفرصة والمصدر</a></div>
+    <div class="stages mt" aria-label="المراحل">{% for k, v in STAGES.items() %}<span class="stage {{ 'on' if k==p.stage }}">{{ v }}</span>{% endfor %}</div>
+  </div>
+  <div class="split">
+    <div class="stack">
+      <section class="card"><h2>الحالة والملاحظات</h2>
+        <form method="post" action="/pipeline/{{ p.id }}/update">{{ m.csrf_field() }}
+          <div class="grid g2"><label>المرحلة<select name="stage" id="stageSelect">{% for k, v in STAGES.items() %}<option value="{{ k }}" {% if k==p.stage %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+            <label>موعد المتابعة القادم<input type="date" name="next_action_at" value="{{ p.next_action_at.strftime('%Y-%m-%d') if p.next_action_at else '' }}"></label></div>
+          <label>ملاحظات<textarea name="notes" maxlength="4000">{{ p.notes }}</textarea></label>
+          <button class="btn btn-dark" type="submit">حفظ</button>
+        </form></section>
+      <section class="card"><h2>سجل التواصل</h2>
+        <form method="post" action="/pipeline/{{ p.id }}/log">{{ m.csrf_field() }}
+          <div class="grid g2"><label>القناة<select name="channel"><option value="phone">اتصال</option><option value="email">بريد</option><option value="visit">زيارة</option><option value="platform">منصة رسمية</option><option value="other">أخرى</option></select></label>
+            <label>النتيجة<input type="text" name="outcome" required maxlength="2000" placeholder="مثال: طلبوا عرض سعر للجبس قبل الخميس"></label></div>
+          <button class="btn btn-outline" type="submit">تسجيل</button>
+        </form>
+        {% if logs %}<ul class="mt">{% for l in logs %}<li><span class="num small muted">{{ ksa(l.at, '%Y-%m-%d') }}</span> — {{ {'phone':'اتصال','email':'بريد','visit':'زيارة','platform':'منصة','other':'أخرى'}[l.channel] }}: {{ l.outcome }}</li>{% endfor %}</ul>{% endif %}
+      </section>
+    </div>
+    <aside class="stack">
+      <section class="card"><h3>عرض السعر</h3>
+        {% for q in quotes %}<p><a href="/quotes/{{ q.id }}">مسودة عرض #{{ q.id }}</a></p>{% endfor %}
+        <form method="post" action="/pipeline/{{ p.id }}/quote">{{ m.csrf_field() }}<button class="btn btn-primary" type="submit" id="makeQuote">جهّز مسودة عرض سعر</button></form>
+        <p class="small muted">تُنشأ البنود حسب تخصصات الفرصة، وتدخل أنت الكميات والأسعار.</p></section>
+      <section class="card"><h3>أدوات هذه المرحلة</h3><ul>{% for t in tools %}<li><a href="/store/{{ t.slug }}">{{ t.title }}</a></li>{% endfor %}</ul>
+        {% if p.stage in ('won','executing') %}<p class="info small">بعد الترسية: استخدم «متابعة تنفيذ المشروع» و«المستخلصات والتحصيل».</p>{% endif %}</section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

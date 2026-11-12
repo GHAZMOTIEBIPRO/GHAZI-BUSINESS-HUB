@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}{{ p.title }} — متجر غازي{% endblock %}
+{% block description %}{{ p.summary }}{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><p><a href="/store">← المتجر</a></p><h1>{{ p.title }}</h1><p class="muted">{{ p.summary }}</p></div>
+  <div class="split">
+    <div class="stack">
+      <section class="card"><h2>ماذا يتضمن</h2><ul>{% for f in p.features %}<li>{{ f }}</li>{% endfor %}</ul>
+        <p class="small muted">الإصدار {{ p.version }} · خلايا الإدخال صفراء، والمعادلات محمية · لا يحتوي أسعار مواد أو أجور سوقية؛ كل الأرقام من إدخالك.</p></section>
+      <section class="card"><h2>الترخيص</h2><p>استخدام داخلي لمنشأة واحدة، بلا حد زمني. يُمنع إعادة البيع أو النشر. التحديثات الصغيرة لنفس الإصدار متاحة من صفحة مشترياتك.</p></section>
+    </div>
+    <aside class="card stack">
+      {% if p.status == 'ready' %}
+        <div><div class="price num">{{ money(price[2]) }} ر.س</div>
+          <p class="small muted">{% if settings.vat_registered %}يشمل ضريبة القيمة المضافة {{ money(price[1]) }} ر.س{% else %}البائع غير مسجل في ضريبة القيمة المضافة حاليًا؛ لا تُضاف ضريبة.{% endif %}</p></div>
+        <a class="btn btn-outline" href="/samples/{{ p.slug }}.xlsx">تنزيل العينة المجانية</a>
+        {% if owned %}<a class="btn btn-dark" href="/account/orders">تملك هذا المنتج — اذهب للتنزيل</a>
+        {% elif user %}<form method="post" action="/buy/product/{{ p.slug }}">{{ m.csrf_field() }}<button class="btn btn-primary" type="submit" id="buyBtn">شراء{{ ' (تجريبي)' if not settings.payments_live_enabled }}</button></form>
+        {% else %}<a class="btn btn-primary" href="/login?next=/store/{{ p.slug }}">سجّل الدخول للشراء</a>{% endif %}
+        <p class="small muted">مشمول أيضًا في <a href="/pricing">الاشتراك الاحترافي</a>. <a href="/refunds">سياسة الاسترداد</a>.</p>
+      {% else %}<p class="notice">هذا المنتج غير متاح: لن يُطرح قبل مراجعته من محامٍ مرخّص.</p>{% endif %}
+    </aside>
+  </div>
+</div>
+{% endblock %}

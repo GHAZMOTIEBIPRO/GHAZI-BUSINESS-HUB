@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}المصادر ومنهجية التحقق — غازي للأعمال{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><h1>المصادر ومنهجية التحقق</h1>
+    <p class="muted">نعرض هنا كل مصدر مسجل، وحقوق استخدامه، وحالته الآن. لا نجلب آليًا من أي موقع إلا بعد توثيق إذن إعادة الاستخدام واحترام robots.txt.</p></div>
+  <div class="grid g3 mb">
+    <div class="card"><h3>1. الحقوق أولًا</h3><p class="muted small">المصدر غير الموثق حقوقه يُعرض «بالرابط فقط» ويُدخل منه يدويًا بعد التحقق، دون نسخ محتواه.</p></div>
+    <div class="card"><h3>2. مراجعة بشرية</h3><p class="muted small">كل سجل جديد أو متغير جوهريًا يمر بمراجع. «طلب باطن مؤكد» يتطلب دليلًا مباشرًا.</p></div>
+    <div class="card"><h3>3. صلاحية التحقق</h3><p class="muted small">لكل سجل مهلة إعادة تحقق؛ عند تجاوزها يُخفى من النتائج الحديثة حتى يُعاد التأكد منه.</p></div>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>المصدر</th><th>الحالة</th><th>حقوق الاستخدام</th><th>آخر تحديث ناجح</th><th>ملاحظات</th></tr></thead>
+    <tbody>{% for s, h in rows %}<tr>
+      <td>{% if s.homepage.startswith('https://') %}<a href="{{ s.homepage }}" rel="noopener noreferrer nofollow" target="_blank">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
+      <td><span class="badge {{ 'b-ok' if h=='ok' else ('b-bad' if h in ('down','late','never_succeeded') else 'b-lead') }}">{{ HEALTH_LABELS[h] }}</span></td>
+      <td>{{ SOURCE_RIGHTS[s.rights] }}</td>
+      <td class="num">{{ ksa(s.last_success_at, '%Y-%m-%d %H:%M') }}</td>
+      <td class="small">{{ s.notes }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="small muted mt">هل تملك جهة أو منصة ترغب في نشر فرص الباطن لديها عبرنا؟ يسعدنا ربط خلاصة رسمية باتفاقية واضحة.</p>
+</div>
+{% endblock %}

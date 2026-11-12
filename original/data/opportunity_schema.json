@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ghazi Opportunity Record v1 — production proposal",
+  "type": "object",
+  "required": ["id","title","source_url","source_name","source_rights","opportunity_type","verified_at","status"],
+  "properties": {
+    "id": {"type":"string"},
+    "title": {"type":"string","maxLength":200},
+    "source_url": {"type":"string","format":"uri","pattern":"^https://"},
+    "source_name": {"type":"string"},
+    "source_rights": {"enum":["verified_public_reuse","link_only","licensed_private","unknown","restricted"]},
+    "opportunity_type": {"enum":["OPPORTUNITY_LEAD","OPEN_TENDER","AWARDED_PROJECT","SUBCONTRACT_CONFIRMED","CLOSED","UNKNOWN"]},
+    "status": {"enum":["pending_review","source_checked","direct_subcontract_confirmed","closed","stale","rejected"]},
+    "verified_at": {"type":"string","format":"date-time"},
+    "published_at": {"type":["string","null"],"format":"date-time"},
+    "expires_at": {"type":["string","null"],"format":"date-time"},
+    "city": {"type":["string","null"]},
+    "region": {"type":["string","null"]},
+    "trades": {"type":"array","items":{"type":"string"}},
+    "owner_entity": {"type":["string","null"]},
+    "main_contractor": {"type":["string","null"]},
+    "contact": {"type":["object","null"],"properties":{"public_business_name":{"type":["string","null"]},"role":{"type":["string","null"]},"public_business_email":{"type":["string","null"]},"public_business_phone":{"type":["string","null"]},"source_url":{"type":["string","null"]},"verified_at":{"type":["string","null"]}}},
+    "evidence": {"type":"array","items":{"type":"object","required":["url","checked_at"],"properties":{"url":{"type":"string"},"checked_at":{"type":"string","format":"date-time"},"finding":{"type":"string"}}}},
+    "reviewer_id": {"type":["string","null"]},
+    "notes": {"type":["string","null"]}
+  }
+}
