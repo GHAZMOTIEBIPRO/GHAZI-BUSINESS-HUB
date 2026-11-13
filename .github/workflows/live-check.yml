@@ -32,12 +32,14 @@ jobs:
       - run: pip install httpx==0.28.1
       - name: HTTP acceptance checks
         run: |
+          set -o pipefail   # without it `| tee` would hide a failing check
           FLAGS=""
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.write }}" = "true" ]; then FLAGS="--write"; fi
           python scripts/live_check.py "$URL" $FLAGS --out live-results.json | tee live-check.txt
       - name: Phone + desktop screenshots
         if: always()
         run: |
+          set -o pipefail
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
           node scripts/live_screens.cjs "$URL" live-shots | tee live-screens.txt
@@ -45,6 +47,7 @@ jobs:
         if: always()
         run: |
           { echo '### Live check'; echo '```'; cat live-check.txt live-screens.txt 2>/dev/null | grep -E 'PASS|FAIL|INFO|passed'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          echo "===== RESULTS ($URL) ====="; cat live-check.txt live-screens.txt 2>/dev/null | grep -E 'PASS|FAIL|INFO|passed' || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
