@@ -1,0 +1,57 @@
+# Acceptance checks against the DEPLOYED staging site over HTTPS: health + PostgreSQL, pages, security headers,
+# free/paid downloads, two throw-away accounts for isolation (deleted at the end), and real phone/desktop screenshots.
+name: live-check
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Site URL (defaults to the HUB_BASE_URL variable or the Render staging address)"
+        required: false
+      write:
+        description: "Create and delete two test accounts (isolation checks)"
+        type: boolean
+        default: true
+  schedule:
+    - cron: "41 3 * * *"     # daily read-only check (06:41 Riyadh)
+  push:
+    branches: [staging-launch]
+    paths: [scripts/live_check.py, scripts/live_screens.cjs, .github/workflows/live-check.yml]
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      URL: ${{ inputs.url || vars.HUB_BASE_URL || 'https://ghazi-business-hub-dd3h.onrender.com' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install httpx==0.28.1
+      - name: HTTP acceptance checks
+        run: |
+          FLAGS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.write }}" = "true" ]; then FLAGS="--write"; fi
+          python scripts/live_check.py "$URL" $FLAGS --out live-results.json | tee live-check.txt
+      - name: Phone + desktop screenshots
+        if: always()
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node scripts/live_screens.cjs "$URL" live-shots | tee live-screens.txt
+      - name: Summary
+        if: always()
+        run: |
+          { echo '### Live check'; echo '```'; cat live-check.txt live-screens.txt 2>/dev/null | grep -E 'PASS|FAIL|INFO|passed'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-evidence
+          path: |
+            live-results.json
+            live-check.txt
+            live-screens.txt
+            live-shots
+          retention-days: 30

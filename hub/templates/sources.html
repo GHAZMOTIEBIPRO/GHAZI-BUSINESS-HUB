@@ -9,15 +9,28 @@
     <div class="card"><h3>2. مراجعة بشرية</h3><p class="muted small">كل سجل جديد أو متغير جوهريًا يمر بمراجع. «طلب باطن مؤكد» يتطلب دليلًا مباشرًا.</p></div>
     <div class="card"><h3>3. صلاحية التحقق</h3><p class="muted small">لكل سجل مهلة إعادة تحقق؛ عند تجاوزها يُخفى من النتائج الحديثة حتى يُعاد التأكد منه.</p></div>
   </div>
-  <div class="table-wrap"><table>
+  <div class="table-wrap stack"><table>
     <thead><tr><th>المصدر</th><th>الحالة</th><th>حقوق الاستخدام</th><th>آخر تحديث ناجح</th><th>ملاحظات</th></tr></thead>
     <tbody>{% for s, h in rows %}<tr>
-      <td>{% if s.homepage.startswith('https://') %}<a href="{{ s.homepage }}" rel="noopener noreferrer nofollow" target="_blank">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
-      <td><span class="badge {{ 'b-ok' if h=='ok' else ('b-bad' if h in ('down','late','never_succeeded') else 'b-lead') }}">{{ HEALTH_LABELS[h] }}</span></td>
-      <td>{{ SOURCE_RIGHTS[s.rights] }}</td>
-      <td class="num">{{ ksa(s.last_success_at, '%Y-%m-%d %H:%M') }}</td>
-      <td class="small">{{ s.notes }}</td></tr>{% endfor %}</tbody>
+      <td data-label="المصدر">{% if s.homepage.startswith('https://') %}<a href="{{ s.homepage }}" rel="noopener noreferrer nofollow" target="_blank">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
+      <td data-label="الحالة"><span class="badge {{ 'b-ok' if h=='ok' else ('b-bad' if h in ('down','late','never_succeeded') else 'b-lead') }}">{{ HEALTH_LABELS[h] }}</span></td>
+      <td data-label="حقوق الاستخدام">{{ SOURCE_RIGHTS[s.rights] }}</td>
+      <td data-label="آخر تحديث ناجح" class="num">{{ ksa(s.last_success_at, '%Y-%m-%d %H:%M') }}</td>
+      <td data-label="ملاحظات" class="small">{{ s.notes }}</td></tr>{% endfor %}</tbody>
   </table></div>
+  <h2 class="mt">التحديث الآلي</h2>
+  <p class="muted small">مهمة مجدولة تغلق الفرص المنتهية، وتُخفي ما تجاوز موعد إعادة التحقق، وترسل التنبيهات المطابقة دون تكرار، وتنبّه المراجع عند تعطل مصدر.</p>
+  {% set trigger_labels = {'token': 'تشغيل محمي بالرمز', 'cli': 'سطر الأوامر'} %}
+  {% if job_runs %}<div class="table-wrap stack" id="jobRuns"><table>
+    <thead><tr><th>وقت التشغيل (الرياض)</th><th>النتيجة</th><th>المشغّل</th><th>فرص أُغلقت</th><th>تحتاج إعادة تحقق</th><th>تنبيهات</th></tr></thead>
+    <tbody>{% for r in job_runs %}<tr>
+      <td data-label="وقت التشغيل" class="num">{{ ksa(r.started_at, '%Y-%m-%d %H:%M') }}</td>
+      <td data-label="النتيجة"><span class="badge {{ 'b-ok' if r.ok else ('b-lead' if not r.finished_at else 'b-bad') }}">{{ 'نجح' if r.ok else ('قيد التشغيل' if not r.finished_at else 'فشل') }}</span></td>
+      <td data-label="المشغّل" class="small">{{ 'جدولة GitHub' if r.trigger.startswith('github_oidc:schedule') else ('تشغيل يدوي عبر GitHub' if r.trigger.startswith('github_oidc') else trigger_labels.get(r.trigger, r.trigger)) }}</td>
+      <td data-label="فرص أُغلقت" class="num">{{ r.summary.get('closed', 0) }}</td>
+      <td data-label="تحتاج إعادة تحقق" class="num">{{ r.summary.get('stale', 0) }}</td>
+      <td data-label="تنبيهات أُرسلت" class="num">{{ r.summary.get('user_alerts', 0) }}</td></tr>{% endfor %}</tbody>
+  </table></div>{% else %}<p class="small muted" id="jobRuns">لم يُسجَّل أي تشغيل آلي بعد.</p>{% endif %}
   <p class="small muted mt">هل تملك جهة أو منصة ترغب في نشر فرص الباطن لديها عبرنا؟ يسعدنا ربط خلاصة رسمية باتفاقية واضحة.</p>
 </div>
 {% endblock %}

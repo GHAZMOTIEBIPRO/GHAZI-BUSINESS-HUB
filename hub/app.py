@@ -6,6 +6,7 @@ import datetime as dt
 import hashlib
 import io
 import json
+import os
 import re
 import secrets
 from pathlib import Path
@@ -20,7 +21,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import jobs, mailer, quotes, radar, store, totp
+from . import jobs, mailer, oidc, quotes, radar, store, totp
 from .config import settings
 from .db import get_db, init_db, utcnow
 from .models import (
@@ -40,6 +41,7 @@ from .models import (
     Entitlement,
     ErrorReport,
     FetchRun,
+    JobRun,
     Notification,
     Opportunity,
     Order,
@@ -76,6 +78,8 @@ app = FastAPI(title="GHAZI Business Hub", docs_url=None, redoc_url=None, openapi
 app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 templates = Jinja2Templates(directory=HERE / "templates")
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{2,}$")
+STARTED_AT = utcnow()  # process start: lets an outside check see that stored data outlived a restart
+OIDC_KEY_RESOLVER = None  # test hook; None = GitHub's published key set
 
 
 # ----------------------------------------------------------------- template helpers
@@ -281,7 +285,7 @@ def radar_report(opp_id: int, request: Request, category: str = Form(...), detai
 def sources_public(request: Request, db: Session = Depends(get_db), user=Depends(current_user_optional)):
     now = utcnow()
     rows = [(s, radar.source_health(s, now)) for s in db.scalars(select(Source).order_by(Source.id)).all()]
-    return render(request, "sources.html", db, user, rows=rows)
+    return render(request, "sources.html", db, user, rows=rows, job_runs=jobs.last_job_runs(db))
 
 
 @app.get("/store", response_class=HTMLResponse)
@@ -447,6 +451,15 @@ def setup(request: Request, setup_code: str = Form(...), name: str = Form(...), 
     db.add(u)
     db.add(AuditLog(action="setup.admin_created", target=email))
     db.commit()
+    if mailer.provider() is None:
+        # no e-mail service yet: the one-time setup code (only visible in the host's dashboard) is the operator's proof.
+        # Recorded so it can be reviewed; every other account still has to confirm its address by e-mail.
+        u.email_verified_at = utcnow()
+        db.add(AuditLog(action="setup.verified_by_setup_code", target=email, detail="no mail provider configured"))
+        db.commit()
+        resp = redirect("/account/2fa", "أُنشئ حساب الإدارة. فعّل التحقق بخطوتين الآن (لم يُضبط مزود البريد بعد)")
+        set_session_cookie(resp, create_session(db, u))
+        return resp
     issue_verification(db, u)
     resp = redirect("/account/verify", "أُنشئ حساب الإدارة. أكّد بريدك ثم فعّل التحقق بخطوتين")
     set_session_cookie(resp, create_session(db, u))
@@ -1133,16 +1146,33 @@ def admin_refund(oid: int, db: Session = Depends(get_db), user: User = Depends(a
 # ----------------------------------------------------------------- internal jobs & SEO
 @app.post("/internal/jobs/refresh")
 def internal_refresh(request: Request, db: Session = Depends(get_db)):
-    auth = request.headers.get("authorization", "")
-    if not settings.jobs_token or not constant_eq(auth.removeprefix("Bearer ").strip(), settings.jobs_token):
+    rate_limit(request, "jobs", 30, 3600)
+    bearer = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
+    trigger = None
+    if settings.jobs_token and bearer and constant_eq(bearer, settings.jobs_token):
+        trigger = "token"
+    elif bearer.count(".") == 2:
+        try:
+            claims = oidc.verify_github_token(bearer, settings.jobs_oidc_repository, settings.jobs_oidc_audience,
+                                              key_resolver=OIDC_KEY_RESOLVER)
+            trigger = f"github_oidc:{claims['event_name']}"
+        except oidc.OIDCRejected as e:
+            db.add(AuditLog(action="jobs.oidc_rejected", target=client_ip(request), detail=str(e)[:200]))
+            db.commit()
+    if not trigger:
         raise HTTPException(401, "unauthorized")
-    return jobs.refresh(db)
+    return JSONResponse(json.loads(json.dumps(jobs.recorded_refresh(db, trigger), default=str)))
 
 
 @app.get("/healthz")
 def healthz(db: Session = Depends(get_db)):
     db.execute(select(1))
-    return {"ok": True}
+    last = db.scalar(select(func.max(JobRun.finished_at)).where(JobRun.job == "refresh", JobRun.ok.is_(True)))
+    # non-secret facts that let an outside check prove which database and build are live, that the scheduler
+    # ran, and (last_refresh_at < started_at) that stored data outlived a restart
+    return {"ok": True, "db": db.get_bind().dialect.name, "env": settings.env,
+            "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:12], "started_at": STARTED_AT.isoformat() + "Z",
+            "last_refresh_at": last.isoformat() + "Z" if last else None}
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)

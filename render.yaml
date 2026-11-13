@@ -1,5 +1,9 @@
-# Render Blueprint — free web service. Database: a free Neon PostgreSQL (persistent); paste its URL as HUB_DATABASE_URL.
+# Render Blueprint — free web service. Database: a free Neon PostgreSQL (persistent).
+# HUB_DATABASE_URL: paste the Neon *pooled* connection string (host contains "-pooler", ends ?sslmode=require).
+# Without it the service refuses to start in staging (no silent SQLite that would lose data on restart).
+# The public address comes from Render's own RENDER_EXTERNAL_URL; HUB_BASE_URL is only needed for a custom domain.
 # Free instances sleep after ~15 min idle (first visit then takes ~1 min to wake). No real payments: sandbox only.
+# Do NOT rename the service: the Blueprint matches services by name.
 services:
   - type: web
     name: ghazi-business-hub
@@ -16,8 +20,6 @@ services:
         generateValue: true
       - key: HUB_JOBS_TOKEN
         generateValue: true
-      - key: HUB_BASE_URL
-        sync: false               # e.g. https://ghazi-business-hub.onrender.com
       - key: HUB_FORWARDED_ALLOW_IPS
         value: "*"                # Render only reaches the container through its own proxy
       - key: HUB_PAYMENT_PROVIDER
