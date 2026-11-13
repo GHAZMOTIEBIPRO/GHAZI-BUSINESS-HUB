@@ -67,6 +67,7 @@ from .security import (
     destroy_session,
     hash_password,
     rate_limit,
+    rate_limit_key,
     require_role,
     verify_csrf,
     verify_password,
@@ -343,6 +344,7 @@ def register_form(request: Request, db: Session = Depends(get_db), user=Depends(
 def register(request: Request, name: str = Form(...), email: str = Form(...), password: str = Form(...),
              company: str = Form(""), agree: str = Form(""), db: Session = Depends(get_db)):
     rate_limit(request, "register", 10, 3600)
+    rate_limit_key("register-global", 200, 3600)  # caps mass sign-ups (and verification mail) from forged IPs
     email = email.strip().lower()
     form = {"name": name, "email": email, "company": company}
     err = None
@@ -429,6 +431,7 @@ def setup_form(request: Request, db: Session = Depends(get_db)):
 def setup(request: Request, setup_code: str = Form(...), name: str = Form(...), email: str = Form(...),
           password: str = Form(...), db: Session = Depends(get_db)):
     rate_limit(request, "setup", 5, 3600)
+    rate_limit_key("setup-global", 10, 3600)  # one site-wide budget: the setup code cannot be brute-forced
     if not setup_open(db):
         raise HTTPException(404, "الصفحة غير موجودة")
     if not constant_eq(setup_code.strip(), settings.setup_token):
@@ -475,6 +478,7 @@ def login_form(request: Request, next: str = "", db: Session = Depends(get_db), 
 def login(request: Request, email: str = Form(...), password: str = Form(...), next: str = Form(""),
           otp: str = Form(""), db: Session = Depends(get_db)):
     rate_limit(request, "login", 10, 900)
+    rate_limit_key(f"login-account:{email.strip().lower()[:254]}", 20, 900)  # forged IPs cannot reset this
     u = db.scalar(select(User).where(User.email == email.strip().lower()))
     if not u or not u.is_active or not verify_password(password, u.password_hash):
         return render(request, "login.html", db, None, status=400, error="بيانات الدخول غير صحيحة", next=safe_next(next))
@@ -498,6 +502,7 @@ def forgot_form(request: Request, db: Session = Depends(get_db), user=Depends(cu
 @app.post("/forgot", dependencies=[Depends(verify_csrf)])
 def forgot(request: Request, email: str = Form(...), db: Session = Depends(get_db)):
     rate_limit(request, "forgot", 5, 3600)
+    rate_limit_key(f"forgot-account:{email.strip().lower()[:254]}", 3, 3600)
     u = db.scalar(select(User).where(User.email == email.strip().lower(), User.is_active.is_(True)))
     if u:
         token = secrets.token_urlsafe(32)
@@ -1172,6 +1177,7 @@ def healthz(db: Session = Depends(get_db)):
     # ran, and (last_refresh_at < started_at) that stored data outlived a restart
     return {"ok": True, "db": db.get_bind().dialect.name, "env": settings.env,
             "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:12], "started_at": STARTED_AT.isoformat() + "Z",
+            "base_url": settings.base_url,  # public address used in e-mailed links (must be the real https URL)
             "last_refresh_at": last.isoformat() + "Z" if last else None}
 
 

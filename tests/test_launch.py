@@ -112,6 +112,40 @@ def test_refresh_still_accepts_the_host_token_and_refuses_nothing(app):
     assert r.status_code == 200 and r.json()["job_run_id"]
 
 
+# ---------------------------------------------------------------- forged X-Forwarded-For cannot reset limits
+def test_password_guessing_is_limited_per_account_even_with_a_new_ip_each_time(app, monkeypatch):
+    import itertools
+
+    from hub import security
+
+    from .conftest import register
+    register(new_client(app), "target@example.sa", password="the-right-password-1")
+    ips = (f"203.0.113.{i}" for i in itertools.count(1))
+    monkeypatch.setattr(security, "client_ip", lambda request: next(ips))  # as if every request forged a new IP
+    c = new_client(app)
+    codes = [c.post("/login", data={"csrf": csrf_of(c, "/login"), "email": "target@example.sa",
+                                    "password": f"guess-{i}"}).status_code for i in range(20)]
+    assert codes == [400] * 20
+    r = c.post("/login", data={"csrf": csrf_of(c, "/login"), "email": "target@example.sa", "password": "the-right-password-1"})
+    assert r.status_code == 429, "21st attempt on the same account is refused whatever the IP"
+    other = c.post("/login", data={"csrf": csrf_of(c, "/login"), "email": "someone-else@example.sa", "password": "x" * 12})
+    assert other.status_code == 400, "other accounts are unaffected"
+
+
+def test_setup_code_has_one_site_wide_budget(app, monkeypatch):
+    import itertools
+
+    from hub import security
+    ips = (f"198.51.100.{i}" for i in itertools.count(1))
+    monkeypatch.setattr(security, "client_ip", lambda request: next(ips))
+    monkeypatch.setattr(settings, "setup_token", "z" * 40)
+    c = new_client(app)
+    codes = [c.post("/setup", data={"csrf": csrf_of(c, "/setup"), "setup_code": f"wrong-{i}" * 6, "name": "x",
+                                    "email": f"a{i}@example.sa", "password": "a-very-long-password"}).status_code
+             for i in range(11)]
+    assert codes[:10] == [403] * 10 and codes[10] == 429
+
+
 # ---------------------------------------------------------------- first admin without an e-mail service
 def test_setup_without_mail_provider_verifies_by_setup_code_and_audits(app, session, monkeypatch):
     monkeypatch.delenv("HUB_MAIL_PROVIDER", raising=False)

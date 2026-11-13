@@ -59,6 +59,9 @@ def read_only(base: str, health: dict) -> None:
         return
     check("database engine is PostgreSQL (not SQLite fallback)", health.get("db") == "postgresql", f"db={health.get('db')}")
     check("environment is staging (no production mode)", health.get("env") == "staging", f"env={health.get('env')}")
+    if base.startswith("https://"):
+        check("e-mail links use this HTTPS address (base_url)", health.get("base_url") == base, f"base_url={health.get('base_url')}")
+        check("deployed commit is reported", bool(health.get("commit")), f"commit={health.get('commit')}")
     last, started = health.get("last_refresh_at"), health.get("started_at")
     if "--require-refresh" in sys.argv:
         check("a scheduled refresh has completed and is stored", bool(last), f"last_refresh_at={last}")
@@ -101,6 +104,14 @@ def write_checks(base: str) -> None:
         check(f"register independent account {who}", r.status_code == 303, f"status={r.status_code}")
         users.append((c, pw))
     (a, pw_a), (b, pw_b) = users
+    email_a = f"live-check-{tag}-a@example.com"
+    r = a.post("/logout", data={"csrf": csrf(a, "/dashboard")})
+    check("logout ends the session", r.status_code == 303 and a.get("/dashboard").status_code in (303, 401), "")
+    r = a.post("/login", data={"csrf": csrf(a, "/login"), "email": email_a, "password": "wrong-password-xx"})
+    check("wrong password refused", r.status_code == 400, f"status={r.status_code}")
+    r = a.post("/login", data={"csrf": csrf(a, "/login"), "email": email_a, "password": pw_a})
+    check("login with the right password", r.status_code == 303 and a.get("/dashboard").status_code == 200, f"status={r.status_code}")
+    check("a normal account cannot open the admin area", a.get("/admin").status_code in (303, 403, 404), "")
     r = a.post("/quotes", data={"csrf": csrf(a, "/quotes")})
     loc = r.headers.get("location", "")
     check("account a creates a private quote", r.status_code == 303 and loc.startswith("/quotes/"), loc)
