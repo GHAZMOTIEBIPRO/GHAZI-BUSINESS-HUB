@@ -13,9 +13,7 @@ on:
         default: true
   schedule:
     - cron: "41 3 * * *"     # daily read-only check (06:41 Riyadh)
-  push:
-    branches: [staging-launch]
-    paths: [scripts/live_check.py, scripts/live_screens.cjs, .github/workflows/live-check.yml]
+  # not on PR pushes: this checks the DEPLOYED site (main), not the PR's code
 permissions:
   contents: read
 jobs:

@@ -1,6 +1,7 @@
 name: ci
 on:
   push:
+    branches: [main]        # PR branches are covered by the pull_request run (no duplicate runs)
   pull_request:
 permissions:
   contents: read
