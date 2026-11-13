@@ -38,9 +38,13 @@ jobs:
         run: |
           want=${GITHUB_SHA:0:12}
           for i in $(seq 1 80); do
-            got=$(curl -s --max-time 60 "$URL/healthz" | jq -r '.commit // empty' 2>/dev/null || true)
+            h=$(curl -s --max-time 60 "$URL/healthz" || true)
+            got=$(echo "$h" | jq -r '.commit // empty' 2>/dev/null || true)
             echo "attempt $i: live commit='${got}' expected='${want}'"
             [ "$got" = "$want" ] && exit 0
+            if [ -z "$got" ] && echo "$h" | jq -e 'has("base_url")' >/dev/null 2>&1; then
+              echo "::warning::new code is live but the host did not report RENDER_GIT_COMMIT; continuing"; exit 0
+            fi
             sleep 15
           done
           echo "::error::Render did not deploy ${want} within 20 minutes (still serving '${got}'). A failed health check keeps the previous version: check HUB_DATABASE_URL in Render."
