@@ -170,3 +170,11 @@ def client_ip(request: Request) -> str:
 def rate_limit(request: Request, bucket: str, limit: int, window_s: int):
     if not limiter.check(f"{bucket}:{client_ip(request)}", limit, window_s):
         raise HTTPException(status_code=429, detail="محاولات كثيرة، حاول بعد قليل")
+
+
+def rate_limit_key(key: str, limit: int, window_s: int):
+    """Limit by something the caller cannot change (an account e-mail, or one global bucket).
+    Behind a proxy the client IP comes from X-Forwarded-For, which a client can forge, so IP-only limits
+    cannot stop password guessing; this one can."""
+    if not limiter.check(key, limit, window_s):
+        raise HTTPException(status_code=429, detail="محاولات كثيرة، حاول بعد قليل")

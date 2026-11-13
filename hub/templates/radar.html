@@ -7,6 +7,9 @@
     <h1>رادار فرص المقاولات</h1>
     <p class="muted">كل نتيجة معتمدة بعد مراجعة مصدرها. المنافسة المفتوحة لا تعني وجود عمل باطن، والمشروع المُرسى لا يعني أن المقاول الرئيسي يطلب مقاولين.</p>
   </div>
+  {% set active = (f.q or f.city or f.region or f.trade or f.type or f.show == 'all') %}
+  <details class="filter-box" id="filterBox" open data-active="{{ '1' if active else '' }}">
+  <summary class="btn btn-outline">تصفية النتائج{% if active %} <span class="badge b-lead">مفعّلة</span>{% endif %}</summary>
   <form class="card filters" method="get" action="/radar" role="search">
     <label>بحث<input type="search" name="q" value="{{ f.q }}" placeholder="مشروع، جهة، مقاول…" maxlength="80"></label>
     <label>المدينة<select name="city"><option value="">كل المدن</option>{% for c in CITIES %}<option {% if f.city==c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
@@ -16,6 +19,7 @@
     <div class="actions"><button class="btn btn-dark" type="submit">تطبيق</button><a class="btn btn-outline" href="/radar">مسح</a></div>
     <label class="check"><input type="checkbox" name="show" value="all" {% if f.show=='all' %}checked{% endif %}> إظهار الفرص المغلقة</label>
   </form>
+  </details>
 
   <div class="row-between mt"><p class="muted" id="resultCount"><span class="num">{{ total }}</span> نتيجة{% if user %} — مرتبة حسب مطابقتها لتفضيلاتك{% endif %}</p>
     {% if not user %}<a href="/register">سجّل مجانًا لترتيب النتائج حسب تخصصك ←</a>{% elif not user.trades %}<a href="/account/profile">حدّد تخصصاتك لترتيب النتائج ←</a>{% endif %}</div>

@@ -17,7 +17,7 @@ from . import db as dbm
 from . import mailer
 from .config import ROOT, settings
 from .db import utcnow
-from .models import EmailOutbox, Notification, Opportunity, Product, Source, User
+from .models import EmailOutbox, JobRun, Notification, Opportunity, Product, Source, User
 from .radar import HEALTH_LABELS, mark_stale_and_closed, match, run_source, source_health
 from .store import active_plan
 
@@ -132,6 +132,33 @@ def refresh(db: Session, now: dt.datetime | None = None, transport=None) -> dict
             **stale, "user_alerts": alerts, "admin_alerts": admin_alerts, "mail": mail}
 
 
+def recorded_refresh(db: Session, trigger: str, now: dt.datetime | None = None, transport=None) -> dict:
+    """refresh() plus a JobRun row, committed even when the refresh fails, so a stopped scheduler is visible."""
+    run = JobRun(job="refresh", trigger=trigger[:40], started_at=utcnow())
+    db.add(run)
+    db.commit()
+    run_id = run.id
+    try:
+        result = refresh(db, now=now, transport=transport)
+    except Exception as e:
+        db.rollback()
+        run = db.get(JobRun, run_id)
+        run.finished_at, run.ok, run.error = utcnow(), False, f"{type(e).__name__}: {e}"[:500]
+        db.commit()
+        raise
+    run = db.get(JobRun, run_id)
+    run.finished_at, run.ok = utcnow(), True
+    run.summary = {"runs": len(result["runs"]), "user_alerts": result["user_alerts"],
+                   "admin_alerts": result["admin_alerts"], "mail_sent": result["mail"].get("sent", 0),
+                   **{k: v for k, v in result.items() if k in ("stale", "closed")}}
+    db.commit()
+    return {**result, "job_run_id": run_id}
+
+
+def last_job_runs(db: Session, limit: int = 5) -> list[JobRun]:
+    return list(db.scalars(select(JobRun).where(JobRun.job == "refresh").order_by(JobRun.id.desc()).limit(limit)))
+
+
 def main(argv):
     dbm.init_db()
     with dbm.SessionLocal() as db:
@@ -140,7 +167,7 @@ def main(argv):
             print("seeded")
         elif argv[:1] == ["refresh"]:
             seed(db)
-            print(json.dumps(refresh(db), ensure_ascii=False, indent=1))
+            print(json.dumps(recorded_refresh(db, "cli"), ensure_ascii=False, indent=1, default=str))
         else:
             print(__doc__)
             return 2

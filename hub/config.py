@@ -44,7 +44,15 @@ class Settings:
     env: str = field(default_factory=lambda: os.environ.get("HUB_ENV", "development"))
     database_url: str = field(default_factory=_default_db_url)
     secret_key: str = field(default_factory=lambda: os.environ.get("HUB_SECRET_KEY", ""))
-    base_url: str = field(default_factory=lambda: os.environ.get("HUB_BASE_URL", "http://127.0.0.1:8000"))
+    # RENDER_EXTERNAL_URL is set by Render itself (https://<service>.onrender.com), so no manual step is needed there
+    base_url: str = field(default_factory=lambda: (os.environ.get("HUB_BASE_URL") or os.environ.get("RENDER_EXTERNAL_URL")
+                                                   or "http://127.0.0.1:8000").rstrip("/"))
+    # outside dev/test a SQLite file would be wiped on every restart of a free host: refuse it unless explicitly allowed
+    allow_sqlite: bool = field(default_factory=lambda: _bool(
+        "HUB_ALLOW_SQLITE", os.environ.get("HUB_ENV", "development") in ("development", "test")))
+    # scheduled jobs may authenticate with a GitHub Actions OIDC token from this repository (no shared secret)
+    jobs_oidc_repository: str = field(default_factory=lambda: os.environ.get("HUB_JOBS_OIDC_REPOSITORY", "GHAZMOTIEBIPRO/GHAZI-BUSINESS-HUB"))
+    jobs_oidc_audience: str = field(default_factory=lambda: os.environ.get("HUB_JOBS_OIDC_AUDIENCE", "ghazi-business-hub"))
     # private product files: NEVER under a static/public directory
     product_dir: Path = field(default_factory=lambda: Path(os.environ.get("HUB_PRODUCT_DIR", ROOT / "products" / "dist" / "full")))
     sample_dir: Path = field(default_factory=lambda: Path(os.environ.get("HUB_SAMPLE_DIR", ROOT / "products" / "dist" / "sample")))
@@ -79,6 +87,9 @@ class Settings:
             self.secret_key = secrets.token_urlsafe(32)
         if not self.sandbox_webhook_secret:
             self.sandbox_webhook_secret = self.secret_key + ":sandbox"
+        if self.database_url.startswith("sqlite") and not self.allow_sqlite:
+            raise RuntimeError(f"HUB_ENV={self.env} needs PostgreSQL: set HUB_DATABASE_URL (or DATABASE_URL) to the Neon "
+                               "connection string; SQLite would lose all data on restart (HUB_ALLOW_SQLITE=true to override)")
         if self.env == "production" and self.payment_provider == "sandbox" and self.payments_live_enabled:
             raise RuntimeError("live payments cannot use the sandbox provider")
 
