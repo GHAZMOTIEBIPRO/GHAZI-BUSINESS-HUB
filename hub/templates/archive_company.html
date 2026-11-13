@@ -1,0 +1,36 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}{{ p.company.display_name }} — الأرشيف{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}{% set c = p.company %}
+<div class="wrap">
+  <div class="page-head"><p><a href="/admin/archive/companies">← الشركات</a></p><h1>{{ c.display_name }}</h1>
+    <p><span class="badge {{ 'b-ok' if c.identity_status=='registry_verified' else 'b-bad' }}" id="identityBadge">{{ IDENTITY.get(c.identity_status) }}</span></p></div>
+  <div class="grid g2">
+    <section class="card"><h2>الهوية</h2><dl class="kv">
+      <dt>السجل التجاري</dt><dd class="num">{{ c.cr_number or 'غير متوفر' }}</dd><dt>الرقم الموحد</dt><dd class="num">{{ c.unified_number or 'غير متوفر' }}</dd>
+      <dt>الأسماء كما نُشرت</dt><dd>{% for a in c.aliases %}{{ a.alias_raw }}{{ '، ' if not loop.last }}{% endfor %}</dd>
+      <dt>التخصصات (مستنتجة من عناوين مشاركاتها)</dt><dd>{{ c.specialties|join('، ') if c.specialties else '—' }}</dd>
+      <dt>المدن</dt><dd>{{ c.cities|join('، ') if c.cities else '—' }}</dd>
+      <dt>الجهات التي تقدمت لها</dt><dd>{{ p.issuers|join('، ') if p.issuers else '—' }}</dd></dl>
+      {% if p.similar %}<p class="small muted" id="similarNote">أسماء متشابهة كتابيًا (لم تُدمج — قد تكون كيانات مختلفة):
+        {% for s in p.similar %}<a href="/admin/archive/companies/{{ s.id }}">{{ s.display_name }}</a>{{ '، ' if not loop.last }}{% endfor %}</p>{% endif %}
+    </section>
+    <section class="card"><h2>النشاط حسب السنة</h2>
+      <div class="table-wrap"><table><thead><tr><th>السنة</th><th>مشاركات</th><th>فوز</th><th>قيمة الترسيات</th></tr></thead><tbody>
+      {% for y, r in p.by_year.items() %}<tr><td class="num">{{ y }}</td><td class="num">{{ r.bids }}</td><td class="num">{{ r.wins }}</td><td class="num">{{ money(r.award_total) }}</td></tr>
+      {% else %}<tr><td colspan="4" class="muted">لا نشاط مؤرخ.</td></tr>{% endfor %}</tbody></table></div></section>
+  </div>
+  <h2 class="mt">الترسيات ({{ p.awards|length }})</h2>
+  <div class="table-wrap"><table id="awardsTable"><thead><tr><th>المنافسة</th><th>الجهة</th><th>القيمة</th><th>التاريخ</th><th>المصدر</th></tr></thead><tbody>
+  {% for a in p.awards %}<tr><td><a href="/admin/archive/tenders/{{ a.tender_id }}">{{ a.tender.title }}</a></td><td>{{ a.tender.issuer.name if a.tender.issuer else '—' }}</td>
+    <td class="num">{{ money(a.award_amount_sar) if a.award_amount_sar is not none else 'غير منشورة' }}</td><td class="num">{{ m.val(a.award_date) }}</td><td>{% if a.source_url %}<a href="{{ a.source_url }}" rel="noopener noreferrer nofollow" target="_blank">رابط</a>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">لا ترسيات معروفة.</td></tr>{% endfor %}</tbody></table></div>
+  <h2 class="mt">المشاركات ({{ p.bids|length }})</h2>
+  <div class="table-wrap"><table id="companyBidsTable"><thead><tr><th>المنافسة</th><th>المدينة</th><th>قيمة العرض</th><th>ترتيب السعر بين المنشور</th><th>النتيجة</th><th>التاريخ</th></tr></thead><tbody>
+  {% for b in p.bids %}<tr><td><a href="/admin/archive/tenders/{{ b.tender_id }}">{{ b.tender.title }}</a></td><td>{{ m.val(b.tender.city) }}</td>
+    <td class="num">{{ money(b.bid_amount_sar) if b.bid_amount_sar is not none else 'غير منشورة' }}</td>
+    <td class="num">{{ b.price_rank_among_published or '—' }}{% if b.price_rank_among_published %} من {{ b.tender.bidders_known }} منشور{% endif %}</td>
+    <td>{{ m.val(b.bid_status) }}</td><td class="num">{{ m.val(b.tender.published_date) }}</td></tr>
+  {% else %}<tr><td colspan="6" class="muted">لا مشاركات.</td></tr>{% endfor %}</tbody></table></div>
+</div>
+{% endblock %}

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="wrap">
   <div class="page-head row-between"><h1>لوحة الإدارة</h1>
-    <div class="actions"><a class="btn btn-primary" href="/admin/review">قائمة المراجعة ({{ stats.pending }})</a><a class="btn btn-outline" href="/admin/opportunities/new">إدخال فرصة</a><a class="btn btn-outline" href="/admin/import">استيراد CSV</a>{% if user.role=='admin' %}<a class="btn btn-outline" href="/admin/orders">الطلبات</a>{% endif %}</div></div>
+    <div class="actions"><a class="btn btn-primary" href="/admin/review">قائمة المراجعة ({{ stats.pending }})</a><a class="btn btn-outline" href="/admin/opportunities/new">إدخال فرصة</a><a class="btn btn-outline" href="/admin/import">استيراد CSV</a><a class="btn btn-outline" href="/admin/archive">أرشيف المناقصات</a>{% if user.role=='admin' %}<a class="btn btn-outline" href="/admin/orders">الطلبات</a>{% endif %}</div></div>
   <div class="grid g4 mb">
     <div class="card"><div class="muted small">بانتظار المراجعة</div><div class="stat num">{{ stats.pending }}</div></div>
     <div class="card"><div class="muted small">جديدة آخر 24 ساعة</div><div class="stat num">{{ stats.new_24h }}</div></div>
