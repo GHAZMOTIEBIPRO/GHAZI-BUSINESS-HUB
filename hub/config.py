@@ -35,6 +35,12 @@ class Settings:
     seller_vat_number: str = field(default_factory=lambda: os.environ.get("HUB_SELLER_VAT_NUMBER", ""))
     vat_rate: float = field(default_factory=lambda: float(os.environ.get("HUB_VAT_RATE", "0.15")))
     vat_registered: bool = field(default_factory=lambda: _bool("HUB_VAT_REGISTERED", False))
+    # staff (admin/reviewer) must enable 2FA before using admin pages; on by default outside dev/test
+    require_staff_2fa: bool = field(default_factory=lambda: _bool(
+        "HUB_REQUIRE_STAFF_2FA", os.environ.get("HUB_ENV", "development") not in ("development", "test")))
+    # on a public staging site the sandbox would hand paid files to anyone: staff-only outside dev/test
+    sandbox_checkout_open: bool = field(default_factory=lambda: _bool(
+        "HUB_SANDBOX_CHECKOUT_OPEN", os.environ.get("HUB_ENV", "development") in ("development", "test")))
     download_token_ttl_seconds: int = 300
     download_limit_per_product: int = 10
     session_days: int = 14

@@ -11,6 +11,16 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hub
+          POSTGRES_PASSWORD: hub-ci
+          POSTGRES_DB: hub_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hub" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,14 +34,20 @@ jobs:
       - run: ruff check .
       - name: Build workbooks (recalculated by LibreOffice)
         run: python products/build_workbooks.py
-      - name: Unit, security, payment, radar and workbook tests
+      - name: Unit, security, payment, radar and workbook tests (SQLite)
         run: pytest -q
+      - name: Same platform tests on PostgreSQL (production database engine)
+        env:
+          HUB_TEST_DATABASE_URL: postgresql://hub:hub-ci@127.0.0.1:5432/hub_test
+        run: pytest -q --ignore=tests/test_workbooks.py --ignore=tests/test_backup.py
       - name: Browser acceptance (390px + 1440px)
         run: |
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
           HUB_ENV=staging HUB_DATABASE_URL=sqlite:///data/ci.db python scripts/seed_demo.py
-          HUB_ENV=staging HUB_DATABASE_URL=sqlite:///data/ci.db HUB_SECRET_KEY=ci-only uvicorn hub.app:app --port 8800 &
+          # test server only: sandbox open to the test user, 2FA not required for the seeded admin
+          HUB_ENV=staging HUB_DATABASE_URL=sqlite:///data/ci.db HUB_SECRET_KEY=ci-only HUB_SANDBOX_CHECKOUT_OPEN=true \
+            HUB_REQUIRE_STAFF_2FA=false uvicorn hub.app:app --port 8800 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8800/healthz && break; sleep 1; done
           node tests/ui/ux_tasks.cjs http://127.0.0.1:8800 ui-shots
       - uses: actions/upload-artifact@v4

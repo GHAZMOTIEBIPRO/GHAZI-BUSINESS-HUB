@@ -12,6 +12,7 @@
     <label class="check"><input type="checkbox" name="alerts" value="1" {% if user.alerts_enabled %}checked{% endif %}> أرسل لي تنبيهات بالفرص المطابقة</label>
     <button class="btn btn-primary" type="submit">حفظ</button>
   </form>
+  <section class="card mt"><h2>الأمان</h2><p>التحقق بخطوتين: <strong>{{ 'مفعّل' if user.totp_secret else 'غير مفعّل' }}</strong></p><a class="btn btn-outline" href="/account/2fa">إدارة التحقق بخطوتين</a></section>
   <section class="card mt"><h2>بياناتي</h2><p>يمكنك تنزيل نسخة من كل بياناتك في أي وقت.</p><a class="btn btn-outline" href="/account/export">تصدير بياناتي (JSON)</a></section>
   <section class="card mt danger-zone"><h2>حذف الحساب</h2><p class="muted">يحذف ملفك ومتابعاتك ومسوداتك. تبقى سجلات الفواتير المدفوعة بلا بيانات شخصية للمدة النظامية.</p>
     <form method="post" action="/account/delete" data-confirm="سيُحذف حسابك نهائيًا. متأكد؟">{{ m.csrf_field() }}<label>كلمة المرور للتأكيد<input type="password" name="password" required autocomplete="current-password" dir="ltr"></label><button class="btn btn-danger" type="submit">حذف حسابي</button></form></section>

@@ -1,0 +1,30 @@
+# Render Blueprint — free web service. Database: a free Neon PostgreSQL (persistent); paste its URL as HUB_DATABASE_URL.
+# Free instances sleep after ~15 min idle (first visit then takes ~1 min to wake). No real payments: sandbox only.
+services:
+  - type: web
+    name: ghazi-business-hub
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: HUB_ENV
+        value: staging            # change to production only after the launch checklist in docs/OPERATIONS.md
+      - key: HUB_DATABASE_URL
+        sync: false               # set in the Render dashboard (Neon connection string)
+      - key: HUB_SECRET_KEY
+        generateValue: true
+      - key: HUB_JOBS_TOKEN
+        generateValue: true
+      - key: HUB_BASE_URL
+        sync: false               # e.g. https://ghazi-business-hub.onrender.com
+      - key: HUB_FORWARDED_ALLOW_IPS
+        value: "*"                # Render only reaches the container through its own proxy
+      - key: HUB_PAYMENT_PROVIDER
+        value: sandbox
+      - key: HUB_PAYMENTS_LIVE_ENABLED
+        value: "false"
+      - key: HUB_BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: HUB_BOOTSTRAP_ADMIN_PASSWORD
+        sync: false

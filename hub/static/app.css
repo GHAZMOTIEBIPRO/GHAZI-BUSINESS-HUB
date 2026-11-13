@@ -163,6 +163,8 @@ tr:last-child td{border-bottom:0}
 .mt{margin-top:1rem}.mb{margin-bottom:1rem}.stack>*+*{margin-top:1rem}
 .danger-zone{border-color:#f3b8b2}
 #authCard{max-width:540px;margin-inline:auto}
+.break{overflow-wrap:anywhere;word-break:break-all}
+#totpSecret{font-size:1.15rem;letter-spacing:.08em;overflow-wrap:anywhere;display:inline-block;max-width:100%}
 @media (max-width:620px){.grid.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stats .card{padding:.7rem .9rem}.stats .stat{font-size:1.5rem}}
 fieldset{border:1px solid var(--line);border-radius:var(--r-sm);padding:.6rem 1rem;margin:0}
 ul.notice{padding-inline-start:2rem}

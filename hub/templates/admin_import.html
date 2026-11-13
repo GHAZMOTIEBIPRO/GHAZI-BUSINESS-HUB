@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}استيراد فرص CSV — الإدارة{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><p><a href="/admin">← الإدارة</a></p><h1>استيراد فرص من ملف CSV</h1>
+    <p class="muted">لكل سجل مصدر موثق جمعه المراجعون. كل الصفوف تدخل قائمة المراجعة ولا تُنشر تلقائيًا. التكرار يُكتشف بالرابط والعنوان.</p></div>
+  {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+  {% if result %}<div class="flash" role="status" id="importResult">قُرئ {{ result.seen }} صفًا: جديد {{ result.new }}، محدّث {{ result.updated }}، أُرسل للمراجعة {{ result.to_review }}، تُجوهل {{ result.skipped }} (بلا عنوان أو رابط HTTPS).</div>{% endif %}
+  <form class="card stack" method="post" action="/admin/import" enctype="multipart/form-data">{{ m.csrf_field() }}
+    <label>المصدر<select name="source_id">{% for s in sources %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select></label>
+    <label>ملف CSV بترميز UTF-8 (حتى 1000 صف، 2 ميجابايت)<input type="file" name="file" accept=".csv,text/csv" required></label>
+    <button class="btn btn-primary" type="submit">استيراد إلى قائمة المراجعة</button>
+  </form>
+  <section class="card mt"><h2>الأعمدة</h2>
+    <p class="num small" dir="ltr">{{ columns|join(',') }}</p>
+    <ul class="small"><li><b>title</b> و<b>url</b> (HTTPS) إلزاميان.</li><li><b>trades</b>: تخصصات مفصولة بـ | من القائمة: {{ TRADES|join(' | ') }}</li>
+      <li><b>opportunity_type</b>: {{ OPP_TYPES.keys()|join('، ') }}</li><li>التواريخ بصيغة YYYY-MM-DD.</li></ul></section>
+</div>
+{% endblock %}

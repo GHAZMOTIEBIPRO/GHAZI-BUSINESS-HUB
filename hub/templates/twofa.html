@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}التحقق بخطوتين — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap"><div class="card mt stack" id="authCard">
+  <h1>التحقق بخطوتين</h1>
+  {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+  {% if user.totp_secret %}
+    <p class="info">مفعّل. يُطلب رمز من تطبيق المصادقة عند كل دخول.</p>
+    <form method="post" action="/account/2fa/disable" data-confirm="إلغاء التحقق بخطوتين يقلل حماية حسابك. متأكد؟">{{ m.csrf_field() }}
+      <label>كلمة المرور<input type="password" name="password" required autocomplete="current-password" dir="ltr"></label>
+      <label>الرمز الحالي<input type="text" name="code" required inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr"></label>
+      <button class="btn btn-outline" type="submit">إلغاء التفعيل</button>
+    </form>
+  {% else %}
+    <ol>
+      <li>افتح تطبيق مصادقة مجاني (Google Authenticator أو Microsoft Authenticator أو Aegis).</li>
+      <li>اختر «إدخال مفتاح يدويًا» وأدخل المفتاح التالي (نوع: مبني على الوقت):</li>
+    </ol>
+    <p class="center"><code class="num" id="totpSecret">{{ pending }}</code></p>
+    <p class="small muted">أو انسخ هذا الرابط في تطبيق يدعم otpauth: <span class="small break" dir="ltr">{{ uri }}</span></p>
+    <form method="post" action="/account/2fa">{{ m.csrf_field() }}
+      <label>أدخل الرمز المكوّن من 6 أرقام<input type="text" name="code" required inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr"></label>
+      <button class="btn btn-primary" type="submit">تفعيل</button>
+    </form>
+  {% endif %}
+</div></div>
+{% endblock %}

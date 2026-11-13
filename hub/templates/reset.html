@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}كلمة مرور جديدة — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap"><div class="card mt" id="authCard">
+  <h1>كلمة مرور جديدة</h1>
+  {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/reset/{{ token }}">{{ m.csrf_field() }}
+    <label>كلمة المرور الجديدة (10 أحرف على الأقل)<input type="password" name="password" required minlength="10" autocomplete="new-password" dir="ltr"></label>
+    <button class="btn btn-primary" type="submit">حفظ</button>
+  </form>
+  <p class="small muted mt">سيُسجَّل خروجك من كل الأجهزة.</p>
+</div></div>
+{% endblock %}

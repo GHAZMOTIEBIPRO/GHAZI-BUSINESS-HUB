@@ -1,0 +1,11 @@
+.venv
+.git
+data
+tests
+original
+docs
+products/build
+ui-shots
+**/__pycache__
+*.db
+.env

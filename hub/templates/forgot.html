@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}نسيت كلمة المرور — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap"><div class="card mt" id="authCard">
+  <h1>استعادة كلمة المرور</h1>
+  {% if sent %}<p class="info" role="status">إن كان البريد مسجلًا لدينا فستصلك رسالة برابط صالح لمدة ساعة.</p>
+  {% else %}
+  <form method="post" action="/forgot">{{ m.csrf_field() }}
+    <label>البريد الإلكتروني<input type="email" name="email" required autocomplete="email" dir="ltr"></label>
+    <button class="btn btn-primary" type="submit">أرسل رابط الاستعادة</button>
+  </form>{% endif %}
+  <p class="mt"><a href="/login">العودة لتسجيل الدخول</a></p>
+</div></div>
+{% endblock %}

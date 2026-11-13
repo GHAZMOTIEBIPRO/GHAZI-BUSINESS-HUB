@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import db as dbm
+from . import mailer
 from .config import ROOT, settings
 from .db import utcnow
 from .models import EmailOutbox, Notification, Opportunity, Product, Source, User
@@ -60,10 +61,35 @@ def sync_sources(db: Session) -> int:
     return len(SOURCE_REGISTRY)
 
 
+def bootstrap_admin(db: Session) -> str:
+    """Create the first admin from HUB_BOOTSTRAP_ADMIN_EMAIL/PASSWORD once, only if no admin exists.
+    Hosts without shell access (free tiers) need this; remove the variables after first login."""
+    import os
+
+    from .security import hash_password
+
+    email = os.environ.get("HUB_BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
+    password = os.environ.get("HUB_BOOTSTRAP_ADMIN_PASSWORD", "")
+    if not email or not password:
+        return "not_configured"
+    if db.scalar(select(User).where(User.role == "admin")):
+        return "admin_exists"
+    if len(password) < 14:
+        return "password_too_short"
+    user = db.scalar(select(User).where(User.email == email))
+    if user:
+        user.role = "admin"
+    else:
+        db.add(User(email=email, name="المدير", role="admin", password_hash=hash_password(password), trades=[], cities=[]))
+    db.commit()
+    return "created"
+
+
 def seed(db: Session):
     sync_catalog(db)
     sync_sources(db)
     db.commit()
+    bootstrap_admin(db)
 
 
 def _notify(db: Session, user_id: int, kind: str, title: str, link: str) -> bool:
@@ -119,14 +145,16 @@ def alert_admins_on_health(db: Session, now: dt.datetime) -> int:
 
 def refresh(db: Session, now: dt.datetime | None = None, transport=None) -> dict:
     now = now or utcnow()
-    runs = [run_source(db, s, now, transport=transport) for s in db.scalars(select(Source)).all()]
+    automated = select(Source).where(Source.kind.not_in(["manual", "csv_import"]))  # manual sources have nothing to fetch
+    runs = [run_source(db, s, now, transport=transport) for s in db.scalars(automated).all()]
     stale = mark_stale_and_closed(db, now)
     alerts = send_user_alerts(db)
     admin_alerts = alert_admins_on_health(db, now)
     db.commit()
+    mail = mailer.send_pending(db)
     return {"runs": [{"source": r.source_id, "outcome": r.outcome, "reason": r.reason, "new": r.items_new,
                       "updated": r.items_updated, "review": r.items_to_review} for r in runs],
-            **stale, "user_alerts": alerts, "admin_alerts": admin_alerts}
+            **stale, "user_alerts": alerts, "admin_alerts": admin_alerts, "mail": mail}
 
 
 def main(argv):

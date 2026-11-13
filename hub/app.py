@@ -1,7 +1,10 @@
 """GHAZI Business Hub — web application (FastAPI + server-rendered Arabic RTL pages)."""
 from __future__ import annotations
 
+import csv
 import datetime as dt
+import hashlib
+import io
 import json
 import re
 import secrets
@@ -17,7 +20,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import jobs, quotes, radar, store
+from . import jobs, mailer, quotes, radar, store, totp
 from .config import settings
 from .db import get_db, init_db, utcnow
 from .models import (
@@ -39,6 +42,7 @@ from .models import (
     Notification,
     Opportunity,
     Order,
+    PasswordReset,
     PipelineItem,
     Product,
     QuoteDraft,
@@ -49,6 +53,7 @@ from .models import (
 from .security import (
     SESSION_COOKIE,
     LoginRequired,
+    TwoFactorSetupRequired,
     constant_eq,
     create_session,
     csrf_token,
@@ -154,6 +159,11 @@ async def security_headers(request: Request, call_next):
 @app.exception_handler(LoginRequired)
 async def _login_required(request: Request, exc: LoginRequired):
     return redirect("/login?" + urlencode({"next": request.url.path}))
+
+
+@app.exception_handler(TwoFactorSetupRequired)
+async def _twofa_required(request: Request, exc: TwoFactorSetupRequired):
+    return redirect("/account/2fa", "حسابات الإدارة تتطلب تفعيل التحقق بخطوتين أولًا")
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -348,14 +358,115 @@ def login_form(request: Request, next: str = "", db: Session = Depends(get_db), 
 
 @app.post("/login", dependencies=[Depends(verify_csrf)])
 def login(request: Request, email: str = Form(...), password: str = Form(...), next: str = Form(""),
-          db: Session = Depends(get_db)):
+          otp: str = Form(""), db: Session = Depends(get_db)):
     rate_limit(request, "login", 10, 900)
     u = db.scalar(select(User).where(User.email == email.strip().lower()))
     if not u or not u.is_active or not verify_password(password, u.password_hash):
         return render(request, "login.html", db, None, status=400, error="بيانات الدخول غير صحيحة", next=safe_next(next))
+    if u.totp_secret:
+        step = totp.verify(u.totp_secret, otp, u.totp_last_step)
+        if step is None:
+            return render(request, "login.html", db, None, status=400, next=safe_next(next),
+                          error="أدخل رمز التحقق الصحيح من تطبيق المصادقة")
+        u.totp_last_step = step
+        db.commit()
     resp = redirect(safe_next(next))
     set_session_cookie(resp, create_session(db, u))
     return resp
+
+
+@app.get("/forgot", response_class=HTMLResponse)
+def forgot_form(request: Request, db: Session = Depends(get_db), user=Depends(current_user_optional)):
+    return render(request, "forgot.html", db, user, sent=False)
+
+
+@app.post("/forgot", dependencies=[Depends(verify_csrf)])
+def forgot(request: Request, email: str = Form(...), db: Session = Depends(get_db)):
+    rate_limit(request, "forgot", 5, 3600)
+    u = db.scalar(select(User).where(User.email == email.strip().lower(), User.is_active.is_(True)))
+    if u:
+        token = secrets.token_urlsafe(32)
+        db.add(PasswordReset(token_hash=hashlib.sha256(token.encode()).hexdigest(), user_id=u.id,
+                             expires_at=utcnow() + dt.timedelta(hours=1)))
+        db.add(EmailOutbox(to=u.email, subject="إعادة تعيين كلمة المرور — غازي للأعمال",
+                           body=f"لإعادة تعيين كلمة المرور خلال ساعة:\n{settings.base_url}/reset/{token}\n"
+                                "إن لم تطلب ذلك فتجاهل هذه الرسالة."))
+        db.commit()
+        mailer.send_pending(db)
+    # same answer whether or not the e-mail exists (no account enumeration)
+    return render(request, "forgot.html", db, None, sent=True)
+
+
+def _reset_row(db: Session, token: str) -> PasswordReset | None:
+    row = db.scalar(select(PasswordReset).where(PasswordReset.token_hash == hashlib.sha256(token.encode()).hexdigest()))
+    if not row or row.used_at or row.expires_at < utcnow():
+        return None
+    return row
+
+
+@app.get("/reset/{token}", response_class=HTMLResponse)
+def reset_form(token: str, request: Request, db: Session = Depends(get_db)):
+    if not _reset_row(db, token):
+        raise HTTPException(400, "الرابط غير صالح أو منتهي")
+    return render(request, "reset.html", db, None, token=token, error=None)
+
+
+@app.post("/reset/{token}", dependencies=[Depends(verify_csrf)])
+def reset(token: str, request: Request, password: str = Form(...), db: Session = Depends(get_db)):
+    row = _reset_row(db, token)
+    if not row:
+        raise HTTPException(400, "الرابط غير صالح أو منتهي")
+    if len(password) < 10:
+        return render(request, "reset.html", db, None, status=400, token=token, error="كلمة المرور 10 أحرف على الأقل")
+    u = db.get(User, row.user_id)
+    u.password_hash = hash_password(password)
+    row.used_at = utcnow()
+    for s in db.scalars(select(AuthSession).where(AuthSession.user_id == u.id)):
+        db.delete(s)  # sign out everywhere
+    db.add(AuditLog(actor_id=u.id, action="password.reset", target=f"user:{u.id}"))
+    db.commit()
+    return redirect("/login", "تم تغيير كلمة المرور، سجّل الدخول")
+
+
+@app.get("/account/2fa", response_class=HTMLResponse)
+def twofa_form(request: Request, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    pending = None
+    if not user.totp_secret:
+        pending = request.cookies.get("ghub_2fa_pending") or totp.new_secret()
+    resp = render(request, "twofa.html", db, user, pending=pending,
+                  uri=totp.provisioning_uri(pending, user.email) if pending else None, error=None)
+    if pending:
+        resp.set_cookie("ghub_2fa_pending", pending, httponly=True, samesite="strict", secure=settings.secure_cookies,
+                        max_age=900, path="/account/2fa")
+    return resp
+
+
+@app.post("/account/2fa", dependencies=[Depends(verify_csrf)])
+def twofa_enable(request: Request, code: str = Form(...), db: Session = Depends(get_db), user: User = Depends(current_user)):
+    pending = request.cookies.get("ghub_2fa_pending")
+    step = totp.verify(pending, code) if pending else None
+    if step is None:
+        return render(request, "twofa.html", db, user, status=400, pending=pending,
+                      uri=totp.provisioning_uri(pending, user.email) if pending else None,
+                      error="الرمز غير صحيح. تأكد من ضبط وقت جهازك.")
+    user.totp_secret, user.totp_last_step = pending, step
+    db.add(AuditLog(actor_id=user.id, action="2fa.enabled", target=f"user:{user.id}"))
+    db.commit()
+    resp = redirect("/dashboard", "فُعّل التحقق بخطوتين")
+    resp.delete_cookie("ghub_2fa_pending", path="/account/2fa")
+    return resp
+
+
+@app.post("/account/2fa/disable", dependencies=[Depends(verify_csrf)])
+def twofa_disable(password: str = Form(...), code: str = Form(...), db: Session = Depends(get_db),
+                  user: User = Depends(current_user)):
+    if not user.totp_secret or not verify_password(password, user.password_hash) or \
+            totp.verify(user.totp_secret, code, user.totp_last_step) is None:
+        return redirect("/account/2fa", "تعذر الإلغاء: تحقق من كلمة المرور والرمز")
+    user.totp_secret, user.totp_last_step = None, 0
+    db.add(AuditLog(actor_id=user.id, action="2fa.disabled", target=f"user:{user.id}"))
+    db.commit()
+    return redirect("/account/2fa", "أُلغي التحقق بخطوتين")
 
 
 @app.post("/logout", dependencies=[Depends(verify_csrf)])
@@ -617,13 +728,19 @@ def checkout(oid: int, request: Request, db: Session = Depends(get_db), user: Us
     o = own_order(db, user, oid)
     if o.status != "pending":
         return redirect(f"/orders/{o.id}")
-    return render(request, "checkout.html", db, user, o=o)
+    return render(request, "checkout.html", db, user, o=o, sandbox_ok=sandbox_allowed(user))
+
+
+def sandbox_allowed(user: User | None) -> bool:
+    return bool(user) and (settings.sandbox_checkout_open or user.role in ("admin", "reviewer"))
 
 
 @app.post("/checkout/{oid}/sandbox", dependencies=[Depends(verify_csrf)])
 def checkout_sandbox(oid: int, result: str = Form(...), db: Session = Depends(get_db), user: User = Depends(current_user)):
     if settings.payment_provider != "sandbox" or settings.env == "production":
         raise HTTPException(404, "غير متاح")
+    if not sandbox_allowed(user):
+        raise HTTPException(403, "الدفع التجريبي متاح لفريق المنصة فقط في هذه البيئة")
     o = own_order(db, user, oid)
     body = store.sandbox_event(o, "paid" if result == "paid" else "failed")
     store.handle_payment_event(db, "sandbox", store.verify_sandbox(body, store.sandbox_sign(body)))
@@ -772,6 +889,60 @@ async def admin_opp_create(request: Request, db: Session = Depends(get_db), user
     db.add(AuditLog(actor_id=user.id, action="opportunity.manual_create", target=n["title"][:120]))
     db.commit()
     return redirect("/admin/review", "أُضيفت الفرصة إلى قائمة المراجعة")
+
+
+IMPORT_COLUMNS = ["title", "url", "city", "owner_entity", "main_contractor", "responsible_company", "trades",
+                  "opportunity_type", "published_at", "deadline_at", "summary", "evidence_url", "evidence_finding"]
+IMPORT_MAX_BYTES = 2_000_000
+IMPORT_MAX_ROWS = 1000
+
+
+@app.get("/admin/import", response_class=HTMLResponse)
+def admin_import_form(request: Request, db: Session = Depends(get_db), user: User = Depends(staff)):
+    sources = db.scalars(select(Source).where(Source.kind == "manual")).all()
+    return render(request, "admin_import.html", db, user, sources=sources, columns=IMPORT_COLUMNS, result=None, error=None)
+
+
+@app.post("/admin/import", dependencies=[Depends(verify_csrf)])
+async def admin_import(request: Request, db: Session = Depends(get_db), user: User = Depends(staff)):
+    form = await request.form()
+    sources = db.scalars(select(Source).where(Source.kind == "manual")).all()
+    src = db.get(Source, int(form.get("source_id") or 0))
+    upload = form.get("file")
+
+    def fail(msg):
+        return render(request, "admin_import.html", db, user, status=400, sources=sources, columns=IMPORT_COLUMNS,
+                      result=None, error=msg)
+    if not src or src.kind != "manual":
+        return fail("اختر مصدرًا يدويًا")
+    if upload is None or not hasattr(upload, "read"):
+        return fail("أرفق ملف CSV")
+    raw = await upload.read(IMPORT_MAX_BYTES + 1)
+    if len(raw) > IMPORT_MAX_BYTES:
+        return fail("الملف أكبر من 2 ميجابايت")
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return fail("احفظ الملف بترميز UTF-8")
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames or not {"title", "url"} <= set(reader.fieldnames):
+        return fail("الأعمدة الإلزامية: title و url")
+    rows = []
+    for i, r in enumerate(reader):
+        if i >= IMPORT_MAX_ROWS:
+            return fail(f"الحد الأقصى {IMPORT_MAX_ROWS} صف في الملف الواحد")
+        r = {k: (v or "").strip() for k, v in r.items() if k in IMPORT_COLUMNS}
+        rec = {**r, "trades": [t.strip() for t in r.get("trades", "").split("|") if t.strip()],
+               "external_id": "csv-" + hashlib.sha256(f"{r.get('url')}|{r.get('title')}".encode()).hexdigest()[:24]}
+        if r.get("evidence_url"):
+            rec["evidence"] = [{"url": r["evidence_url"], "checked_at": utcnow().isoformat(),
+                                "finding": r.get("evidence_finding", "")[:500]}]
+        rows.append(rec)
+    st = radar.upsert(db, src, rows)
+    db.add(AuditLog(actor_id=user.id, action="opportunity.csv_import", target=src.key,
+                    detail=f"seen={st.seen} new={st.new} updated={st.updated} skipped={st.skipped}"))
+    db.commit()
+    return render(request, "admin_import.html", db, user, sources=sources, columns=IMPORT_COLUMNS, result=st, error=None)
 
 
 @app.post("/admin/opportunities/{opp_id}/review", dependencies=[Depends(verify_csrf)])

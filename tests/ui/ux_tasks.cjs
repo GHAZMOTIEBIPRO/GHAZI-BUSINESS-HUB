@@ -9,7 +9,7 @@ const SHOTS = process.argv[3] || 'ui-shots';
 fs.mkdirSync(SHOTS, { recursive: true });
 const results = [];
 const rec = (ok, name, detail = '') => results.push({ ok: !!ok, name, detail });
-const PAGES = ['/', '/radar', '/radar/1', '/store', '/store/progress-invoices', '/pricing', '/calculator', '/sources', '/login', '/register', '/privacy'];
+const PAGES = ['/', '/radar', '/radar/1', '/store', '/store/progress-invoices', '/pricing', '/calculator', '/sources', '/login', '/register', '/forgot', '/privacy'];
 const stamp = Date.now();
 
 async function audit(browser, label, viewport) {
@@ -68,6 +68,11 @@ async function journey(browser) {
   rec(page.url().includes('/dashboard'), 'profile saved -> dashboard');
   rec(await page.locator('.badge.b-high').count() > 0, 'dashboard shows high-match opportunity');
   await page.screenshot({ path: path.join(SHOTS, 'flow_dashboard_mobile.png'), fullPage: true });
+
+  await page.goto(BASE + '/account/2fa');
+  const ov2fa = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  rec(ov2fa <= 1 && await page.locator('#totpSecret').count() === 1, '2FA setup page fits 390px', `overflow ${ov2fa}px`);
+  await page.screenshot({ path: path.join(SHOTS, 'flow_2fa_mobile.png'), fullPage: true });
 
   await page.goto(BASE + '/radar?trade=' + encodeURIComponent('الدهانات'));
   rec(await page.locator('#results .opp').count() >= 1, 'radar trade filter returns results');

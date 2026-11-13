@@ -260,6 +260,11 @@ def upsert(db: Session, source: Source, raws: list[dict], now: dt.datetime | Non
         reasons = review_reasons(n, source, now)
         ttl = dt.timedelta(days=source.verify_ttl_days)
         if existing:
+            # never erase known information with an empty value; trades accumulate
+            n["trades"] = sorted(set(existing.trades or []) | set(n["trades"] or []), key=TRADES.index)
+            for k in list(n):
+                if n[k] in (None, "", []) and getattr(existing, k) not in (None, "", []):
+                    n[k] = getattr(existing, k)
             changed = [k for k in n if k != "evidence" and getattr(existing, k) != n[k]]
             for k in changed:
                 setattr(existing, k, n[k])

@@ -18,8 +18,19 @@ def utcnow() -> dt.datetime:
     return dt.datetime.now(dt.UTC).replace(tzinfo=None)
 
 
+def normalise_url(url: str) -> str:
+    """Hosts (Render, Neon, Heroku-style) hand out postgres:// URLs; SQLAlchemy needs the driver name."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 def make_engine(url: str):
+    url = normalise_url(url)
     kwargs = {}
+    if url.startswith("postgresql"):
+        kwargs.update(pool_pre_ping=True, pool_size=5, max_overflow=5, pool_recycle=300)
     if url.startswith("sqlite"):
         path = url.split("///", 1)[-1]
         if path and path != ":memory:":

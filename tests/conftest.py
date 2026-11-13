@@ -16,9 +16,16 @@ from hub.security import hash_password, limiter  # noqa: E402
 CSRF_RE = re.compile(r'name="csrf" value="([^"]+)"')
 
 
+PG_URL = os.environ.get("HUB_TEST_DATABASE_URL")  # set to run the whole suite on PostgreSQL
+
+
 @pytest.fixture()
 def database(tmp_path):
-    dbm.configure(f"sqlite:///{tmp_path / 'test.db'}")
+    if PG_URL:
+        dbm.configure(PG_URL)
+        dbm.Base.metadata.drop_all(dbm.engine)
+    else:
+        dbm.configure(f"sqlite:///{tmp_path / 'test.db'}")
     dbm.init_db()
     with dbm.SessionLocal() as s:
         jobs.seed(s)

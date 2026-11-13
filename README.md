@@ -15,7 +15,8 @@ hub/            التطبيق (FastAPI + Jinja2 RTL، بلا إطار JS، CSP 
   quotes.py     من الفرصة إلى مسودة عرض سعر و Excel
   security.py   scrypt، جلسات، CSRF، تحديد معدل الطلبات
 products/       build_workbooks.py يولّد 7 أدوات + عينات، ويعيد حسابها بـ LibreOffice
-tests/          pytest (81 اختبارًا) + tests/ui/ux_tasks.cjs (Playwright 390/1440)
+tests/          pytest (88 اختبارًا، SQLite وPostgreSQL) + tests/ui/ux_tasks.cjs (Playwright 390/1440)
+Dockerfile, render.yaml   نشر مجاني: Render + Neon — الخطوات في docs/DEPLOY_FREE.md
 scripts/        backup.py (نسخ/استعادة مختبرة)، seed_demo.py (بيانات أمثلة لـ staging فقط)
 docs/           STATUS, OPERATIONS, COMPETITORS, THIRD_PARTY
 original/       النموذج الأولي المسلَّم كما هو (مرجع ومصدر)

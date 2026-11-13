@@ -63,6 +63,17 @@ class User(Base):
     alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    totp_last_step: Mapped[int] = mapped_column(Integer, default=0)  # replay protection
+
+
+class PasswordReset(Base):
+    __tablename__ = "password_resets"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime)
+    used_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class AuthSession(Base):

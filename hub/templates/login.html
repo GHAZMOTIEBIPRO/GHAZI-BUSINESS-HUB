@@ -8,8 +8,10 @@
   <form method="post" action="/login">{{ m.csrf_field() }}<input type="hidden" name="next" value="{{ next }}">
     <label>البريد الإلكتروني<input type="email" name="email" required autocomplete="email" dir="ltr"></label>
     <label>كلمة المرور<input type="password" name="password" required autocomplete="current-password" dir="ltr"></label>
+    <label>رمز التحقق (لمن فعّل التحقق بخطوتين)<input type="text" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr"></label>
     <button class="btn btn-primary" type="submit">دخول</button>
   </form>
-  <p class="mt">ليس لديك حساب؟ <a href="/register">أنشئ حسابًا مجانيًا</a></p>
+  <p class="mt"><a href="/forgot">نسيت كلمة المرور؟</a></p>
+  <p>ليس لديك حساب؟ <a href="/register">أنشئ حسابًا مجانيًا</a></p>
 </div></div>
 {% endblock %}

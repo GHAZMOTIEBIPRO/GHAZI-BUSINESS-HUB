@@ -7,14 +7,14 @@
   <dl class="kv"><dt>البند</dt><dd>{{ o.product.title if o.product else ('اشتراك ' ~ PLANS[o.plan].title ~ ' — 30 يومًا') }}</dd>
     <dt>قبل الضريبة</dt><dd class="num">{{ money(o.amount_before_vat) }} ر.س</dd><dt>الضريبة</dt><dd class="num">{{ money(o.vat_amount) }} ر.س</dd>
     <dt>الإجمالي</dt><dd class="num"><strong>{{ money(o.total) }} ر.س</strong></dd></dl>
-  {% if settings.payment_provider == 'sandbox' and settings.env != 'production' %}
+  {% if settings.payment_provider == 'sandbox' and settings.env != 'production' and sandbox_ok %}
     <p class="notice">بوابة تجريبية (Sandbox): لا تُحصَّل أي مبالغ. اختر نتيجة الدفع لمحاكاة إشعار البوابة الموقّع.</p>
     <div class="actions">
       <form method="post" action="/checkout/{{ o.id }}/sandbox">{{ m.csrf_field() }}<input type="hidden" name="result" value="paid"><button class="btn btn-primary" type="submit" id="payOk">محاكاة دفع ناجح</button></form>
       <form method="post" action="/checkout/{{ o.id }}/sandbox">{{ m.csrf_field() }}<input type="hidden" name="result" value="failed"><button class="btn btn-outline" type="submit">محاكاة فشل الدفع</button></form>
     </div>
   {% else %}
-    <p class="info">بوابة الدفع الحقيقية غير مفعلة بعد. لن يُطلب منك أي دفع.</p>
+    <p class="info">بوابة الدفع الحقيقية غير مفعلة بعد، فالشراء غير متاح حاليًا ولن يُطلب منك أي دفع. يمكنك تنزيل العينة المجانية.</p>
   {% endif %}
 </div></div>
 {% endblock %}
