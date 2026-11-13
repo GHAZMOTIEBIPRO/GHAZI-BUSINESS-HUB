@@ -5,7 +5,7 @@
 <div class="wrap">
   <div class="page-head row-between"><div><p><a href="/admin">← الإدارة</a></p><h1>أرشيف المناقصات والمتقدمين والترسيات</h1>
     <p class="muted small" id="privacyNote">خاص بفريق المنصة. كل السجلات <b>غير منشورة</b> حتى يُوثق حق إعادة استخدام مصدرها. العروض المعروضة هي الظاهرة علنًا فقط وليست بالضرورة كل المتقدمين، والفائز لا يُستنتج من أقل عرض.</p></div>
-    <div class="actions"><a class="btn btn-outline" href="/admin/archive/companies">الشركات</a><a class="btn btn-outline" href="/admin/archive/sources">المصادر والتراخيص</a><a class="btn btn-outline" href="/admin/archive/subcontracts">فرص الباطن المؤكدة</a>{% if user.role=='admin' %}<a class="btn btn-primary" href="/admin/archive/import">استيراد حزمة</a>{% endif %}</div></div>
+    <div class="actions"><a class="btn btn-outline" href="/admin/archive/companies">الشركات</a><a class="btn btn-outline" href="/admin/archive/sources">المصادر والتراخيص</a><a class="btn btn-outline" href="/admin/archive/subcontracts">فرص الباطن المؤكدة</a><a class="btn btn-outline" href="/admin/archive/insights">تحليلات السوق</a>{% if user.role=='admin' %}<a class="btn btn-primary" href="/admin/archive/import">استيراد حزمة</a>{% endif %}</div></div>
 
   <div class="grid g4 mb" id="archiveStats">
     <div class="card"><div class="muted small">منافسات (حقيقية)</div><div class="stat num">{{ stats.tenders }}</div></div>
@@ -33,7 +33,8 @@
     <div class="actions mt"><button class="btn btn-primary" type="submit">بحث</button><a class="btn btn-outline" href="/admin/archive">مسح</a></div>
   </form>
 
-  <p class="muted small mt" id="resultCount">{{ total }} نتيجة</p>
+  <p class="muted small mt"><span id="resultCount">{{ total }} نتيجة</span>
+    {% if total %} · <a id="exportCsv" href="/admin/archive/export.csv{{ ('?' ~ request.url.query) if request.url.query }}">تنزيل النتائج CSV (خاص بالفريق)</a>{% endif %}</p>
   <div class="table-wrap"><table id="tendersTable"><thead><tr><th>الرقم</th><th>المشروع</th><th>الجهة</th><th>المدينة</th><th>الحالة</th><th>الفائز (كما نُشر)</th><th>قيمة الترسية</th><th>المتقدمون: معروف/معلن</th><th>الاكتمال</th></tr></thead><tbody>
   {% for t in rows %}<tr><td class="num"><a href="/admin/archive/tenders/{{ t.id }}">{{ t.official_reference }}</a></td><td>{{ t.title }}</td><td>{{ t.issuer.name if t.issuer else '—' }}</td><td>{{ m.val(t.city) }}</td>
     <td><span class="badge {{ 'b-ok' if t.status=='awarded' else 'b-lead' }}">{{ TENDER_STATUS.get(t.status, t.status) }}</span></td>

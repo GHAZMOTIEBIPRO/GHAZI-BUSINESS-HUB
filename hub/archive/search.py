@@ -102,6 +102,66 @@ def search_tenders(s: Session, f: TenderFilters) -> tuple[list[ProcurementTender
     return rows, total
 
 
+EXPORT_LIMIT = 5000
+
+
+def _csv_cell(value) -> str:
+    """Plain text for a spreadsheet: a leading = + - @ (or tab/CR) would be read as a formula, so it is quoted."""
+    text = "" if value is None else str(value)
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+def export_rows(s: Session, f: TenderFilters) -> list[list[str]]:
+    """The current search as rows for a private staff CSV (no pagination, capped at EXPORT_LIMIT)."""
+    tenders = s.scalars(tender_query(f).options(selectinload(ProcurementTender.issuer), selectinload(ProcurementTender.awards))
+                        .order_by(ProcurementTender.published_date.desc().nulls_last(), ProcurementTender.id.desc())
+                        .limit(EXPORT_LIMIT)).all()
+    out = [["المرجع", "العنوان", "الجهة", "المدينة", "المنطقة", "الحالة", "التصنيف", "تاريخ النشر", "آخر موعد",
+            "تاريخ الترسية", "الفائز كما نُشر", "قيمة الترسية", "متقدمون معروفون", "متقدمون معلنون", "رابط المصدر",
+            "حالة الحقوق"]]
+    for t in tenders:
+        out.append([_csv_cell(v) for v in (
+            t.official_reference, t.title, t.issuer.name if t.issuer else "", t.city, t.region, t.status, t.lifecycle,
+            t.published_date, t.submission_deadline, t.award_date, " | ".join(a.winner_name_raw for a in t.awards),
+            " | ".join(str(a.award_amount_sar) for a in t.awards if a.award_amount_sar is not None),
+            t.bidders_known, t.offer_count_claimed, t.source_url, t.source_rights_status)])
+    return out
+
+
+def insights(s: Session, f: TenderFilters, top: int = 15) -> dict:
+    """Counts over the tenders matching the filters. Facts about the archive sample only: not market shares,
+    not win probabilities. Bidders are the publicly visible ones, which may be fewer than all who bid."""
+    ids = tender_query(f).with_only_columns(ProcurementTender.id).subquery()
+    in_scope = ProcurementTender.id.in_(select(ids.c.id))
+    by_lifecycle = dict(s.execute(select(ProcurementTender.lifecycle, func.count()).where(in_scope)
+                                  .group_by(ProcurementTender.lifecycle)).all())
+    amounts = sorted(a for (a,) in s.execute(select(TenderAward.award_amount_sar).where(
+        TenderAward.tender_id.in_(select(ids.c.id)), TenderAward.award_amount_sar.is_not(None))))
+    n = len(amounts)
+    median = None if not n else (amounts[n // 2] if n % 2 else (amounts[n // 2 - 1] + amounts[n // 2]) / 2)
+    bid_counts = dict(s.execute(select(TenderBid.company_id, func.count()).where(TenderBid.tender_id.in_(select(ids.c.id)))
+                                .group_by(TenderBid.company_id)).all())
+    win_rows = s.execute(select(TenderAward.company_id, func.count(), func.sum(TenderAward.award_amount_sar))
+                         .where(TenderAward.tender_id.in_(select(ids.c.id))).group_by(TenderAward.company_id)).all()
+    wins = {cid: (cnt, total or 0.0) for cid, cnt, total in win_rows}
+    ranked = sorted(set(bid_counts) | set(wins), key=lambda c: (-wins.get(c, (0, 0))[0], -bid_counts.get(c, 0), c))[:top]
+    names = {c.id: c for c in s.scalars(select(Company).where(Company.id.in_(ranked)))} if ranked else {}
+    companies = [{"company": names[c], "bids": bid_counts.get(c, 0), "wins": wins.get(c, (0, 0))[0],
+                  "award_total": wins.get(c, (0, 0))[1]} for c in ranked if c in names]
+    issuers = s.execute(select(ProcurementIssuer.name, func.count()).join(
+        ProcurementTender, ProcurementTender.issuer_id == ProcurementIssuer.id).where(in_scope)
+        .group_by(ProcurementIssuer.name).order_by(func.count().desc(), ProcurementIssuer.name).limit(top)).all()
+    by_city = s.execute(select(ProcurementTender.city, func.count()).where(in_scope, ProcurementTender.city.is_not(None))
+                        .group_by(ProcurementTender.city).order_by(func.count().desc(), ProcurementTender.city).limit(top)).all()
+    incomplete = s.scalar(select(func.count(ProcurementTender.id)).where(
+        in_scope, ProcurementTender.status == "awarded", ProcurementTender.bid_list_complete.is_(False)))
+    return {"tenders": sum(by_lifecycle.values()), "by_lifecycle": by_lifecycle,
+            "awards_with_amount": n, "award_min": amounts[0] if n else None, "award_median": median,
+            "award_max": amounts[-1] if n else None, "award_total": sum(amounts) if n else None,
+            "companies": companies, "issuers": [tuple(r) for r in issuers], "by_city": [tuple(r) for r in by_city],
+            "awarded_with_partial_bid_list": incomplete}
+
+
 def facets(s: Session) -> dict:
     real = ProcurementTender.is_synthetic.is_(False)
     years = sorted({y for (y,) in s.execute(select(extract("year", ProcurementTender.published_date)).where(real).distinct())

@@ -152,7 +152,7 @@ async function adminAndCalc(browser) {
 
 // private procurement archive (staff only): every screen at 390px and 1440px, and the D entry form on a phone
 const ARCHIVE_PAGES = ['/admin/archive', '/admin/archive/companies', '/admin/archive/sources', '/admin/archive/subcontracts',
-  '/admin/archive/import'];
+  '/admin/archive/insights', '/admin/archive/import'];
 async function archive(browser, label, viewport) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1, locale: 'ar-SA' });
   const page = await ctx.newPage();

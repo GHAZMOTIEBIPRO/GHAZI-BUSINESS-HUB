@@ -1,15 +1,17 @@
 """Staff-only archive screens. Nothing here is public: records are private until their source licence is verified."""
 from __future__ import annotations
 
+import csv
+import io
 import tempfile
 from pathlib import Path
 
 from fastapi import Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from ..models import TRADES
+from ..models import TRADES, AuditLog
 from . import curation
 from .curation import CurationError
 from .importer import MAX_PACKAGE_BYTES, Importer, PackageError
@@ -30,9 +32,10 @@ from .models import (
     TenderAward,
     TenderBid,
 )
-from .search import company_profile, facets, parse_filters, search_companies, search_tenders
+from .search import company_profile, export_rows, facets, insights, parse_filters, search_companies, search_tenders
 from .sources import ensure_sources
 
+PRIORITY_CITIES = ["ينبع الصناعية", "ينبع", "جدة", "الرياض"]  # owner's priority order
 LABELS = dict(TENDER_STATUS=TENDER_STATUS, LIFECYCLE=LIFECYCLE, RIGHTS=RIGHTS, VISIBILITY=VISIBILITY, IDENTITY=IDENTITY,
               TRADES=TRADES, SUBCONTRACT_REVIEW=SUBCONTRACT_REVIEW, EVIDENCE_KINDS=EVIDENCE_KINDS)
 
@@ -57,6 +60,29 @@ def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
         batches = db.scalars(select(ImportBatch).order_by(ImportBatch.id.desc()).limit(10)).all()
         return render(request, "archive_home.html", db, user, rows=rows, total=total, f=f, facets=facets(db),
                       stats=stats, batches=batches, pages=max(1, -(-total // 50)), **LABELS)
+
+    @app.get("/admin/archive/insights", response_class=HTMLResponse)
+    def archive_insights(request: Request, db: Session = Depends(get_db), user=Depends(staff)):
+        f = parse_filters(request.query_params)
+        return render(request, "archive_insights.html", db, user, f=f, facets=facets(db), ins=insights(db, f),
+                      priority_cities=PRIORITY_CITIES, **LABELS)
+
+    @app.get("/admin/archive/export.csv")
+    def archive_export(request: Request, db: Session = Depends(get_db), user=Depends(staff)):
+        """Private staff export of the current search. Logged; the file says it must not be republished."""
+        f = parse_filters(request.query_params)
+        rows = export_rows(db, f)
+        buf = io.StringIO()
+        buf.write("﻿")  # BOM so Excel reads Arabic as UTF-8
+        w = csv.writer(buf)
+        w.writerow(["خاص بفريق المنصة — غير مرخص لإعادة النشر. حقوق المصادر غير متحقق منها."])
+        w.writerows(rows)
+        db.add(AuditLog(actor_id=user.id, action="archive.export_csv", target=f"rows={len(rows) - 1}",
+                        detail=str(request.url.query)[:500]))
+        db.commit()
+        return Response(buf.getvalue(), media_type="text/csv; charset=utf-8", headers={
+            "Content-Disposition": 'attachment; filename="archive_private_export.csv"', "Cache-Control": "no-store",
+            "X-Robots-Tag": "noindex"})
 
     @app.get("/admin/archive/tenders/{tender_id}", response_class=HTMLResponse)
     def archive_tender(tender_id: int, request: Request, db: Session = Depends(get_db), user=Depends(staff)):
