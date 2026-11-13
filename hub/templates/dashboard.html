@@ -7,6 +7,7 @@
     <div><h1>أهلًا {{ user.name }}</h1><p class="muted">باقتك: <strong>{{ plan.title }}</strong>{% if plan.ends_at %} حتى <span class="num">{{ ksa(plan.ends_at) }}</span>{% endif %}</p></div>
     <div class="actions"><a class="btn btn-outline" href="/account/profile">تفضيلاتي</a><a class="btn btn-outline" href="/account/orders">مشترياتي</a></div>
   </div>
+  {% if not user.email_verified_at %}<div class="notice mb" id="verifyBanner">لم يُؤكَّد بريدك بعد. <a href="/account/verify">أكّده الآن</a> لتتمكن من الشراء والاشتراك واستلام تنبيهات البريد.</div>{% endif %}
   {% if needs_profile %}<div class="info mb">حدّد تخصصاتك ومدنك لتظهر لك الفرص المطابقة وتصلك تنبيهاتها. <a href="/account/profile">حدّدها الآن ←</a></div>{% endif %}
   <div class="grid g4 stats mb">
     {% for key in ['saved','pricing','quote_sent','won'] %}<a class="card card-link" href="/pipeline"><div class="muted small">{{ STAGES[key] }}</div><div class="stat num">{{ stage_counts.get(key, 0) }}</div></a>{% endfor %}

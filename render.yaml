@@ -24,7 +24,11 @@ services:
         value: sandbox
       - key: HUB_PAYMENTS_LIVE_ENABLED
         value: "false"
-      - key: HUB_BOOTSTRAP_ADMIN_EMAIL
+      - key: HUB_SETUP_TOKEN
+        generateValue: true       # one-time code for /setup (first admin); delete it after setup
+      - key: HUB_MAIL_PROVIDER
+        value: brevo              # HTTPS API: Render Free blocks SMTP ports
+      - key: HUB_MAIL_API_KEY
         sync: false
-      - key: HUB_BOOTSTRAP_ADMIN_PASSWORD
-        sync: false
+      - key: HUB_MAIL_FROM
+        sync: false               # a sender address verified in Brevo

@@ -145,7 +145,8 @@ def test_not_due_source_is_skipped(session):
 def test_user_alerts_match_once_and_email_only_for_paid(session):
     paint = User(email="p@example.sa", name="p", password_hash="!", trades=["الدهانات"], cities=["ينبع"])
     doors = User(email="d@example.sa", name="d", password_hash="!", trades=["الأبواب"], cities=["الرياض"])
-    paid = User(email="paid@example.sa", name="x", password_hash="!", trades=["الجبس والأسقف المستعارة"], cities=[])
+    paid = User(email="paid@example.sa", name="x", password_hash="!", trades=["الجبس والأسقف المستعارة"], cities=[],
+                email_verified_at=utcnow())  # e-mail alerts need a confirmed address
     session.add_all([paint, doors, paid])
     session.flush()
     session.add(Subscription(user_id=paid.id, plan="radar", starts_at=utcnow() - dt.timedelta(days=1),

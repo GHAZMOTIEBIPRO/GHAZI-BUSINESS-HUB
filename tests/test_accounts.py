@@ -1,7 +1,9 @@
-"""Two-factor login, staff 2FA enforcement, password reset + SMTP, CSV import."""
+"""Two-factor login, staff 2FA enforcement, password reset via HTTPS e-mail API, CSV import."""
+import json
 import re
 import time
 
+import httpx
 from sqlalchemy import func, select
 
 from hub import mailer, totp
@@ -54,39 +56,33 @@ def test_staff_must_enable_2fa_when_required(app, session, monkeypatch):
     assert c.get("/admin").status_code == 200
 
 
-def test_password_reset_flow_no_enumeration_and_smtp(app, session, monkeypatch):
+def brevo_capture(monkeypatch, status=201):
+    """Route the mailer to a fake Brevo endpoint over HTTPS API and record what it would send."""
     sent = []
 
-    class FakeSMTP:
-        def __init__(self, host, port, timeout):
-            assert (host, port) == ("smtp.example.sa", 587)
+    def handler(request: httpx.Request):
+        assert request.url == httpx.URL("https://api.brevo.com/v3/smtp/email")
+        assert request.headers["api-key"] == "test-brevo-key"
+        sent.append(json.loads(request.content))
+        return httpx.Response(status, json={"messageId": f"<m{len(sent)}@brevo>"} if status < 300 else {"code": "unauthorized"})
+    monkeypatch.setenv("HUB_MAIL_PROVIDER", "brevo")
+    monkeypatch.setenv("HUB_MAIL_API_KEY", "test-brevo-key")
+    monkeypatch.setenv("HUB_MAIL_FROM", "no-reply@example.sa")
+    monkeypatch.setattr(mailer, "TRANSPORT", httpx.MockTransport(handler))
+    return sent
 
-        def __enter__(self):
-            return self
 
-        def __exit__(self, *a):
-            return False
-
-        def starttls(self, context):
-            pass
-
-        def login(self, u, p):
-            pass
-
-        def send_message(self, msg):
-            sent.append(msg)
-    monkeypatch.setenv("HUB_SMTP_HOST", "smtp.example.sa")
-    monkeypatch.setenv("HUB_SMTP_FROM", "no-reply@example.sa")
-    monkeypatch.setattr(mailer.smtplib, "SMTP", FakeSMTP)
-
+def test_password_reset_flow_no_enumeration_via_https_api(app, session, monkeypatch):
+    sent = brevo_capture(monkeypatch)
     c = new_client(app)
     register(c, "reset@example.sa")
+    sent.clear()  # ignore the verification mail
     other = new_client(app)
     r1 = other.post("/forgot", data={"csrf": csrf_of(other, "/forgot"), "email": "nobody@example.sa"})
     r2 = other.post("/forgot", data={"csrf": csrf_of(other, "/forgot"), "email": "reset@example.sa"})
     assert r1.status_code == r2.status_code == 200 and "إن كان البريد" in r1.text and "إن كان البريد" in r2.text
-    assert len(sent) == 1 and sent[0]["To"] == "reset@example.sa"
-    link = re.search(r"/reset/[\w-]+", sent[0].get_content()).group(0)
+    assert len(sent) == 1 and sent[0]["to"] == [{"email": "reset@example.sa"}]
+    link = re.search(r"/reset/[\w-]+", sent[0]["textContent"]).group(0)
     assert session.scalar(select(EmailOutbox.sent_at).where(EmailOutbox.to == "reset@example.sa")) is not None
     r = other.post(link, data={"csrf": csrf_of(other, link), "password": "short"})
     assert r.status_code == 400
@@ -113,17 +109,6 @@ def test_public_staging_sandbox_is_staff_only(app, session, monkeypatch):
     oid2 = int(r.headers["location"].rsplit("/", 1)[1])
     r = post(s, f"/checkout/{oid2}/sandbox", {"result": "paid"}, csrf_from=f"/checkout/{oid2}")
     assert r.headers["location"] == f"/orders/{oid2}"
-
-
-def test_bootstrap_admin_once(session, monkeypatch):
-    from hub import jobs
-    monkeypatch.setenv("HUB_BOOTSTRAP_ADMIN_EMAIL", "Owner@Example.sa")
-    monkeypatch.setenv("HUB_BOOTSTRAP_ADMIN_PASSWORD", "short")
-    assert jobs.bootstrap_admin(session) == "password_too_short"
-    monkeypatch.setenv("HUB_BOOTSTRAP_ADMIN_PASSWORD", "a-long-owner-password")
-    assert jobs.bootstrap_admin(session) == "created"
-    assert session.scalar(select(User).where(User.email == "owner@example.sa")).role == "admin"
-    assert jobs.bootstrap_admin(session) == "admin_exists"
 
 
 def test_csv_import_goes_to_review(app, session):

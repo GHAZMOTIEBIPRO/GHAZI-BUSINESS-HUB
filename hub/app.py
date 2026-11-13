@@ -36,6 +36,7 @@ from .models import (
     ContactLog,
     DownloadLog,
     EmailOutbox,
+    EmailVerification,
     Entitlement,
     ErrorReport,
     FetchRun,
@@ -52,8 +53,10 @@ from .models import (
 )
 from .security import (
     SESSION_COOKIE,
+    EmailVerificationRequired,
     LoginRequired,
     TwoFactorSetupRequired,
+    client_ip,
     constant_eq,
     create_session,
     csrf_token,
@@ -100,7 +103,8 @@ def money(v) -> str:
 templates.env.globals.update(ksa=ksa, ago=ago, money=money, TRADES=TRADES, CITIES=CITIES, OPP_TYPES=OPPORTUNITY_TYPES,
                              STAGES=PIPELINE_STAGES, PLANS=PLANS, REVIEW_STATES=REVIEW_STATES, SOURCE_RIGHTS=SOURCE_RIGHTS,
                              MATCH_LABELS=radar.MATCH_LABELS, HEALTH_LABELS=radar.HEALTH_LABELS, settings=settings,
-                             contact_ok=radar.contact_ok, now_utc=utcnow)
+                             contact_ok=radar.contact_ok, now_utc=utcnow, public_summary=radar.public_summary,
+                             summary_publishable=radar.summary_publishable)
 
 
 def render(request: Request, name: str, db: Session, user: User | None, status=200, **ctx):
@@ -166,6 +170,11 @@ async def _twofa_required(request: Request, exc: TwoFactorSetupRequired):
     return redirect("/account/2fa", "حسابات الإدارة تتطلب تفعيل التحقق بخطوتين أولًا")
 
 
+@app.exception_handler(EmailVerificationRequired)
+async def _email_required(request: Request, exc: EmailVerificationRequired):
+    return redirect("/account/verify", "أكّد بريدك الإلكتروني أولًا لإتمام هذه العملية")
+
+
 @app.exception_handler(StarletteHTTPException)
 async def _http_error(request: Request, exc: HTTPException):
     if request.url.path.startswith(("/payments/", "/internal/")):
@@ -204,7 +213,8 @@ def radar_list(request: Request, q: str = "", city: str = "", region: str = "", 
     stmt = public_opps_query()
     if q.strip():
         like = f"%{q.strip()[:80]}%"
-        stmt = stmt.where(or_(Opportunity.title.ilike(like), Opportunity.summary.ilike(like),
+        # search facts only: matching on withheld text would leak what we may not republish
+        stmt = stmt.where(or_(Opportunity.title.ilike(like),
                               Opportunity.owner_entity.ilike(like), Opportunity.main_contractor.ilike(like)))
     if city in CITIES:
         stmt = stmt.where(Opportunity.city == city)
@@ -346,7 +356,99 @@ def register(request: Request, name: str = Form(...), email: str = Form(...), pa
              trades=[], cities=[])
     db.add(u)
     db.commit()
-    resp = redirect("/account/profile", "أهلًا بك! اختر تخصصاتك ومدنك لتصلك الفرص المطابقة")
+    issue_verification(db, u)
+    resp = redirect("/account/profile", "أهلًا بك! أرسلنا رابط تأكيد إلى بريدك. اختر الآن تخصصاتك ومدنك")
+    set_session_cookie(resp, create_session(db, u))
+    return resp
+
+
+VERIFY_TTL = dt.timedelta(hours=48)
+
+
+def issue_verification(db: Session, user: User) -> None:
+    token = secrets.token_urlsafe(32)
+    db.add(EmailVerification(token_hash=hashlib.sha256(token.encode()).hexdigest(), user_id=user.id, email=user.email,
+                             expires_at=utcnow() + VERIFY_TTL))
+    db.add(EmailOutbox(to=user.email, subject="تأكيد بريدك — غازي للأعمال",
+                       body=f"مرحبًا {user.name}،\nلتأكيد بريدك خلال 48 ساعة افتح الرابط:\n{settings.base_url}/verify/{token}\n"
+                            "إن لم تنشئ حسابًا لدينا فتجاهل هذه الرسالة."))
+    db.commit()
+    mailer.send_pending(db)
+
+
+@app.get("/verify/{token}")
+def verify_email(token: str, db: Session = Depends(get_db)):
+    row = db.scalar(select(EmailVerification).where(
+        EmailVerification.token_hash == hashlib.sha256(token.encode()).hexdigest()))
+    user = db.get(User, row.user_id) if row else None
+    if not row or row.used_at or row.expires_at < utcnow() or not user or user.email != row.email:
+        raise HTTPException(400, "رابط التأكيد غير صالح أو منتهي — اطلب رابطًا جديدًا من حسابك")
+    row.used_at = utcnow()
+    user.email_verified_at = user.email_verified_at or utcnow()
+    db.add(AuditLog(actor_id=user.id, action="email.verified", target=f"user:{user.id}"))
+    db.commit()
+    return redirect("/dashboard", "تم تأكيد بريدك")
+
+
+@app.get("/account/verify", response_class=HTMLResponse)
+def verify_status(request: Request, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    return render(request, "verify.html", db, user)
+
+
+@app.post("/account/verify/resend", dependencies=[Depends(verify_csrf)])
+def verify_resend(request: Request, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    rate_limit(request, "verify_resend", 3, 3600)
+    if user.email_verified_at:
+        return redirect("/dashboard", "بريدك مؤكد مسبقًا")
+    issue_verification(db, user)
+    return redirect("/account/verify", "أُرسل رابط جديد")
+
+
+def require_verified(user: User):
+    if user.email_verified_at is None:
+        raise EmailVerificationRequired()
+
+
+# ----------------------------------------------------------------- first admin (one-time, secret code)
+def setup_open(db: Session) -> bool:
+    return len(settings.setup_token) >= 32 and db.scalar(select(User.id).where(User.role == "admin").limit(1)) is None
+
+
+@app.get("/setup", response_class=HTMLResponse)
+def setup_form(request: Request, db: Session = Depends(get_db)):
+    if not setup_open(db):
+        raise HTTPException(404, "الصفحة غير موجودة")
+    return render(request, "setup.html", db, None, error=None)
+
+
+@app.post("/setup", dependencies=[Depends(verify_csrf)])
+def setup(request: Request, setup_code: str = Form(...), name: str = Form(...), email: str = Form(...),
+          password: str = Form(...), db: Session = Depends(get_db)):
+    rate_limit(request, "setup", 5, 3600)
+    if not setup_open(db):
+        raise HTTPException(404, "الصفحة غير موجودة")
+    if not constant_eq(setup_code.strip(), settings.setup_token):
+        db.add(AuditLog(action="setup.bad_code", target=client_ip(request)))
+        db.commit()
+        raise HTTPException(403, "رمز الإعداد غير صحيح")
+    email = email.strip().lower()
+    err = None
+    if not EMAIL_RE.match(email):
+        err = "بريد غير صالح"
+    elif len(password) < 14:
+        err = "كلمة مرور المدير 14 حرفًا على الأقل"
+    elif db.scalar(select(User.id).where(User.email == email)):
+        # never promote an existing account: its owner has not been proven to be the operator
+        err = "هذا البريد مسجل بحساب قائم؛ استخدم بريدًا جديدًا لحساب الإدارة"
+    if err:
+        return render(request, "setup.html", db, None, status=400, error=err)
+    u = User(email=email, name=name.strip()[:120] or "المدير", role="admin", password_hash=hash_password(password),
+             trades=[], cities=[])
+    db.add(u)
+    db.add(AuditLog(action="setup.admin_created", target=email))
+    db.commit()
+    issue_verification(db, u)
+    resp = redirect("/account/verify", "أُنشئ حساب الإدارة. أكّد بريدك ثم فعّل التحقق بخطوتين")
     set_session_cookie(resp, create_session(db, u))
     return resp
 
@@ -420,6 +522,7 @@ def reset(token: str, request: Request, password: str = Form(...), db: Session =
         return render(request, "reset.html", db, None, status=400, token=token, error="كلمة المرور 10 أحرف على الأقل")
     u = db.get(User, row.user_id)
     u.password_hash = hash_password(password)
+    u.email_verified_at = u.email_verified_at or utcnow()  # following the e-mailed link proves the address
     row.used_at = utcnow()
     for s in db.scalars(select(AuthSession).where(AuthSession.user_id == u.id)):
         db.delete(s)  # sign out everywhere
@@ -697,6 +800,7 @@ def quote_xlsx(qid: int, db: Session = Depends(get_db), user: User = Depends(cur
 @app.post("/buy/product/{slug}", dependencies=[Depends(verify_csrf)])
 def buy_product(slug: str, request: Request, db: Session = Depends(get_db), user: User = Depends(current_user)):
     rate_limit(request, "buy", 20, 3600)
+    require_verified(user)
     try:
         order = store.create_order(db, user, product=get_product(db, slug))
     except store.StoreError as e:
@@ -708,6 +812,7 @@ def buy_product(slug: str, request: Request, db: Session = Depends(get_db), user
 @app.post("/buy/plan/{plan}", dependencies=[Depends(verify_csrf)])
 def buy_plan(plan: str, request: Request, db: Session = Depends(get_db), user: User = Depends(current_user)):
     rate_limit(request, "buy", 20, 3600)
+    require_verified(user)
     try:
         order = store.create_order(db, user, plan=plan)
     except store.StoreError as e:
@@ -859,6 +964,8 @@ def _opp_from_form(form) -> dict:
            ("title", "summary", "city", "owner_entity", "main_contractor", "responsible_company", "url",
             "published_at", "deadline_at", "opportunity_type")}
     raw["trades"] = form.getlist("trades")
+    # the reviewer must attest the summary is in their own words; otherwise it is treated as source text
+    raw["summary_origin"] = "reviewer" if form.get("summary_own_words") else "source"
     if form.get("contact_name") or form.get("contact_email") or form.get("contact_phone"):
         raw["contact"] = {"public_business_name": form.get("contact_name") or None, "role": form.get("contact_role") or None,
                           "public_business_email": form.get("contact_email") or None,
@@ -892,7 +999,8 @@ async def admin_opp_create(request: Request, db: Session = Depends(get_db), user
 
 
 IMPORT_COLUMNS = ["title", "url", "city", "owner_entity", "main_contractor", "responsible_company", "trades",
-                  "opportunity_type", "published_at", "deadline_at", "summary", "evidence_url", "evidence_finding"]
+                  "opportunity_type", "published_at", "deadline_at", "summary", "summary_is_own_words", "evidence_url",
+                  "evidence_finding"]
 IMPORT_MAX_BYTES = 2_000_000
 IMPORT_MAX_ROWS = 1000
 
@@ -933,7 +1041,8 @@ async def admin_import(request: Request, db: Session = Depends(get_db), user: Us
             return fail(f"الحد الأقصى {IMPORT_MAX_ROWS} صف في الملف الواحد")
         r = {k: (v or "").strip() for k, v in r.items() if k in IMPORT_COLUMNS}
         rec = {**r, "trades": [t.strip() for t in r.get("trades", "").split("|") if t.strip()],
-               "external_id": "csv-" + hashlib.sha256(f"{r.get('url')}|{r.get('title')}".encode()).hexdigest()[:24]}
+               "external_id": "csv-" + hashlib.sha256(f"{r.get('url')}|{r.get('title')}".encode()).hexdigest()[:24],
+               "summary_origin": "reviewer" if r.get("summary_is_own_words", "").lower() in {"1", "true", "yes", "نعم"} else "source"}
         if r.get("evidence_url"):
             rec["evidence"] = [{"url": r["evidence_url"], "checked_at": utcnow().isoformat(),
                                 "finding": r.get("evidence_finding", "")[:500]}]
@@ -960,7 +1069,12 @@ async def admin_opp_review(opp_id: int, request: Request, db: Session = Depends(
             return redirect("/admin/review", "لا يمكن اعتماد «باطن مؤكد» دون دليل مرفق")
         if not o.source_url.startswith("https://"):
             return redirect("/admin/review", "رابط المصدر غير صالح")
+        rewritten = str(form.get("reviewer_summary") or "").strip()[:4000]
+        if rewritten:  # reviewer's own wording replaces source text and becomes publishable
+            o.summary, o.summary_origin = rewritten, "reviewer"
         o.opportunity_type, o.review_state, o.review_reasons = typ, "approved", []
+        if o.summary and not radar.summary_publishable(o.summary, o.summary_origin, o.source.rights):
+            o.review_reasons = ["اعتُمدت دون الوصف: نص المصدر غير مرخّص لإعادة النشر"]
         o.verified_at = utcnow()
         o.review_due_at = utcnow() + dt.timedelta(days=o.source.verify_ttl_days)
     elif decision == "reject":

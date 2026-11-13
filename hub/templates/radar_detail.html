@@ -25,7 +25,9 @@
           <dt>آخر تحقق</dt><dd><span class="num">{{ ksa(o.verified_at, '%Y-%m-%d %H:%M') }}</span> (توقيت الرياض)</dd>
           <dt>المصدر</dt><dd>{{ o.source.name }} — <a href="{{ o.source_url }}" rel="noopener noreferrer nofollow" target="_blank">فتح المصدر الأصلي ↗</a></dd>
         </dl>
-        {% if o.summary %}<h3 class="mt">الوصف كما ورد</h3><p>{{ o.summary }}</p>{% endif %}
+        {% set desc = public_summary(o) %}
+        {% if desc %}<h3 class="mt">{{ 'ملخص المراجع' if o.summary_origin == 'reviewer' else 'الوصف كما ورد في المصدر' }}</h3><p id="oppSummary">{{ desc }}</p>
+        {% elif o.summary %}<p class="small muted mt" id="summaryWithheld">الوصف التفصيلي متاح في المصدر الأصلي فقط (حقوق النشر للمصدر).</p>{% endif %}
       </section>
 
       <section class="card">

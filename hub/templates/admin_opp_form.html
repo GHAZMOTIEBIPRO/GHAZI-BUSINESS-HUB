@@ -20,7 +20,8 @@
       <label>آخر موعد للتقديم<input type="date" name="deadline_at"></label>
     </div>
     <fieldset><legend><strong>التخصصات</strong></legend><div class="checks">{% for t in TRADES %}<label class="check"><input type="checkbox" name="trades" value="{{ t }}"> {{ t }}</label>{% endfor %}</div></fieldset>
-    <label>ملخص (بصياغتك)<textarea name="summary" maxlength="4000"></textarea></label>
+    <label>ملخص<textarea name="summary" maxlength="4000"></textarea></label>
+    <label class="check"><input type="checkbox" name="summary_own_words" value="1"> كتبت الملخص بصياغتي ولم أنسخه من المصدر (وإلا لن يُعرض إلا إن كان المصدر مرخّصًا لإعادة النشر)</label>
     <fieldset><legend><strong>جهة التواصل المهنية (اختياري — منشورة للعامة فقط)</strong></legend>
       <div class="grid g2"><label>الاسم المهني<input type="text" name="contact_name" maxlength="160"></label><label>المسمى<input type="text" name="contact_role" maxlength="120"></label>
         <label>بريد العمل المنشور<input type="email" name="contact_email" dir="ltr"></label><label>هاتف العمل المنشور<input type="text" name="contact_phone" dir="ltr" maxlength="30"></label>

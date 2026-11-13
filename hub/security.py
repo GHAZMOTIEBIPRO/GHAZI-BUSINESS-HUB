@@ -96,10 +96,16 @@ class TwoFactorSetupRequired(Exception):
     pass
 
 
+class EmailVerificationRequired(Exception):
+    pass
+
+
 def require_role(*roles: str):
     def dep(user: User = Depends(current_user)) -> User:
         if user.role not in roles:
             raise HTTPException(status_code=403, detail="غير مصرح")
+        if user.email_verified_at is None:
+            raise EmailVerificationRequired()
         if settings.require_staff_2fa and not user.totp_secret:
             raise TwoFactorSetupRequired()
         return user

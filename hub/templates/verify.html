@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}تأكيد البريد — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap"><div class="card mt stack" id="authCard">
+  <h1>تأكيد البريد الإلكتروني</h1>
+  {% if user.email_verified_at %}
+    <p class="info" id="verifyState">بريدك <span class="num">{{ user.email }}</span> مؤكد.</p>
+    <a class="btn btn-primary" href="/dashboard">لوحتي</a>
+  {% else %}
+    <p id="verifyState">أرسلنا رابط تأكيد إلى <strong class="num">{{ user.email }}</strong>. التأكيد مطلوب للشراء والاشتراك وتنبيهات البريد{% if user.role in ('admin','reviewer') %} ولدخول لوحة الإدارة{% endif %}.</p>
+    <p class="small muted">لم تصلك الرسالة؟ تحقق من مجلد الرسائل غير المرغوبة، أو اطلب رابطًا جديدًا.</p>
+    <form method="post" action="/account/verify/resend">{{ m.csrf_field() }}<button class="btn btn-outline" type="submit">إرسال رابط جديد</button></form>
+  {% endif %}
+</div></div>
+{% endblock %}

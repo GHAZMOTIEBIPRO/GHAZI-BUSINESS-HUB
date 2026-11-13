@@ -60,7 +60,7 @@ def main():
         for email, role in (("admin@demo.example.sa", "admin"), ("contractor@demo.example.sa", "user")):
             if not db.query(User).filter_by(email=email).first():
                 db.add(User(email=email, name="مدير تجريبي" if role == "admin" else "مؤسسة مثال للتشطيبات", role=role,
-                            password_hash=hash_password("demo-password-123"),
+                            password_hash=hash_password("demo-password-123"), email_verified_at=utcnow(),
                             trades=["الدهانات", "الجبس والأسقف المستعارة"] if role == "user" else [],
                             cities=["ينبع", "جدة"] if role == "user" else []))
         db.commit()

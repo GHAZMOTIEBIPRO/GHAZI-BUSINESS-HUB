@@ -96,6 +96,20 @@ def https_url(u: str | None) -> str | None:
     return p.geturl() if p.scheme == "https" and p.netloc else None
 
 
+REPUBLISHABLE_RIGHTS = AUTOMATABLE_RIGHTS  # rights that allow republishing the source's own text
+
+
+def summary_publishable(summary: str | None, origin: str | None, source_rights: str | None) -> bool:
+    """Facts and links are always shown; descriptive text only if we wrote it or the source licenses reuse."""
+    if not (summary or "").strip():
+        return False
+    return origin == "reviewer" or source_rights in REPUBLISHABLE_RIGHTS
+
+
+def public_summary(opp) -> str | None:
+    return opp.summary if summary_publishable(opp.summary, opp.summary_origin, opp.source.rights) else None
+
+
 def contact_ok(contact: dict | None) -> bool:
     """A contact may be displayed only if it is a business channel, has its own source URL and display is allowed."""
     if not contact:
@@ -191,6 +205,7 @@ def normalise(raw: dict) -> dict:
         "external_id": str(raw.get("external_id") or raw.get("id") or "").strip()[:200] or None,
         "title": title,
         "summary": summary,
+        "summary_origin": "reviewer" if raw.get("summary_origin") == "reviewer" else "source",
         "city": city,
         "region": CITIES.get(city or "") or (str(raw.get("region")).strip() if raw.get("region") else None),
         "trades": declared_trades or classify_trades(text),
@@ -226,6 +241,8 @@ def review_reasons(n: dict, source: Source, now: dt.datetime) -> list[str]:
         r.append("موعد التقديم منتهٍ")
     if not n["title"]:
         r.append("لا يوجد عنوان")
+    if n["summary"] and not summary_publishable(n["summary"], n["summary_origin"], source.rights):
+        r.append("الوصف منقول من مصدر غير مرخّص لإعادة النشر — لن يُعرض للعامة؛ اكتب ملخصًا بصياغتك إن لزم")
     return r
 
 

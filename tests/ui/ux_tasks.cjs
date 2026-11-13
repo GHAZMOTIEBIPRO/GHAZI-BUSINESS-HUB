@@ -62,6 +62,13 @@ async function journey(browser) {
   await page.check('input[name=agree]');
   await page.click('form[action="/register"] button[type=submit]');
   rec(page.url().includes('/account/profile'), 'register -> profile', page.url());
+  // follow the confirmation link that was e-mailed (read from the test server's outbox)
+  const { execFileSync } = require('child_process');
+  const dbPath = process.env.HUB_UI_DB || 'data/staging.db';
+  const verifyPath = execFileSync(process.env.PYTHON || 'python3', [path.join(__dirname, 'mail_link.py'), dbPath, email, '/verify/']).toString().trim();
+  await page.goto(BASE + verifyPath);
+  rec(page.url().includes('/dashboard') && await page.locator('#verifyBanner').count() === 0, 'e-mail confirmed via mailed link');
+  await page.goto(BASE + '/account/profile');
   await page.check('input[name=trades][value="الدهانات"]');
   await page.check('input[name=cities][value="ينبع"]');
   await page.click('form[action="/account/profile"] button[type=submit]');

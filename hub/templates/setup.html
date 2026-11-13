@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}إعداد حساب الإدارة — غازي للأعمال{% endblock %}
+{% block robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block content %}
+<div class="wrap"><div class="card mt stack" id="authCard">
+  <h1>إعداد حساب الإدارة الأول</h1>
+  <p class="small muted">تُستخدم مرة واحدة فقط وتُغلق تلقائيًا بعد إنشاء المدير. تتطلب رمز الإعداد السري المحفوظ في إعدادات الخادم. ينشئ حسابًا جديدًا فقط ولا يرقّي أي حساب موجود.</p>
+  {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/setup">{{ m.csrf_field() }}
+    <label>رمز الإعداد<input type="password" name="setup_code" required autocomplete="off" dir="ltr"></label>
+    <label>الاسم<input type="text" name="name" required maxlength="120"></label>
+    <label>بريد الإدارة (جديد)<input type="email" name="email" required autocomplete="email" dir="ltr"></label>
+    <label>كلمة المرور (14 حرفًا على الأقل)<input type="password" name="password" required minlength="14" autocomplete="new-password" dir="ltr"></label>
+    <button class="btn btn-primary" type="submit">إنشاء حساب الإدارة</button>
+  </form>
+  <p class="small muted">بعدها: أكّد البريد من الرابط المرسل، ثم فعّل التحقق بخطوتين، ثم احذف HUB_SETUP_TOKEN من إعدادات الخادم.</p>
+</div></div>
+{% endblock %}

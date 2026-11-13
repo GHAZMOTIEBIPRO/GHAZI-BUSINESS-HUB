@@ -49,7 +49,7 @@ jobs:
           HUB_ENV=staging HUB_DATABASE_URL=sqlite:///data/ci.db HUB_SECRET_KEY=ci-only HUB_SANDBOX_CHECKOUT_OPEN=true \
             HUB_REQUIRE_STAFF_2FA=false uvicorn hub.app:app --port 8800 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8800/healthz && break; sleep 1; done
-          node tests/ui/ux_tasks.cjs http://127.0.0.1:8800 ui-shots
+          HUB_UI_DB=data/ci.db node tests/ui/ux_tasks.cjs http://127.0.0.1:8800 ui-shots
       - uses: actions/upload-artifact@v4
         if: always()
         with:

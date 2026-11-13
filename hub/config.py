@@ -41,6 +41,8 @@ class Settings:
     # on a public staging site the sandbox would hand paid files to anyone: staff-only outside dev/test
     sandbox_checkout_open: bool = field(default_factory=lambda: _bool(
         "HUB_SANDBOX_CHECKOUT_OPEN", os.environ.get("HUB_ENV", "development") in ("development", "test")))
+    # one-time first-admin setup code (>= 32 chars); /setup is closed when unset or once an admin exists
+    setup_token: str = field(default_factory=lambda: os.environ.get("HUB_SETUP_TOKEN", ""))
     download_token_ttl_seconds: int = 300
     download_limit_per_product: int = 10
     session_days: int = 14

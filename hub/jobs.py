@@ -61,35 +61,10 @@ def sync_sources(db: Session) -> int:
     return len(SOURCE_REGISTRY)
 
 
-def bootstrap_admin(db: Session) -> str:
-    """Create the first admin from HUB_BOOTSTRAP_ADMIN_EMAIL/PASSWORD once, only if no admin exists.
-    Hosts without shell access (free tiers) need this; remove the variables after first login."""
-    import os
-
-    from .security import hash_password
-
-    email = os.environ.get("HUB_BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
-    password = os.environ.get("HUB_BOOTSTRAP_ADMIN_PASSWORD", "")
-    if not email or not password:
-        return "not_configured"
-    if db.scalar(select(User).where(User.role == "admin")):
-        return "admin_exists"
-    if len(password) < 14:
-        return "password_too_short"
-    user = db.scalar(select(User).where(User.email == email))
-    if user:
-        user.role = "admin"
-    else:
-        db.add(User(email=email, name="المدير", role="admin", password_hash=hash_password(password), trades=[], cities=[]))
-    db.commit()
-    return "created"
-
-
 def seed(db: Session):
     sync_catalog(db)
     sync_sources(db)
     db.commit()
-    bootstrap_admin(db)
 
 
 def _notify(db: Session, user_id: int, kind: str, title: str, link: str) -> bool:
@@ -117,7 +92,7 @@ def send_user_alerts(db: Session) -> int:
             link = f"/radar/{o.id}"
             if _notify(db, u.id, "match", f"فرصة مطابقة: {o.title}", link):
                 sent += 1
-                if active_plan(db, u)["alerts"]:
+                if active_plan(db, u)["alerts"] and u.email_verified_at:  # never mail an unproven address
                     db.add(EmailOutbox(to=u.email, subject=f"فرصة مطابقة لتخصصك: {o.title}"[:300],
                                        body=f"{o.title}\n{settings.base_url}{link}\nتحقق من المصدر قبل التواصل."))
         o.alerted = True

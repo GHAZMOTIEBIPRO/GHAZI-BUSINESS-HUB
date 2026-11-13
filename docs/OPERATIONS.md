@@ -47,7 +47,7 @@ HUB_ENV=staging .venv/bin/uvicorn hub.app:app --host 0.0.0.0 --port 8000 --proxy
 ```
 بديل: `.github/workflows/refresh.yml` يستدعي نقطة النهاية المحمية (يتطلب سر `HUB_JOBS_TOKEN` و`HUB_BASE_URL` في GitHub).
 
-**إرسال البريد:** الرسائل تُحفظ في جدول `email_outbox`. ربط مزود بريد (SMTP/SES) لم يُنفذ بعد — مطلوب قبل وعد المشتركين بالتنبيه البريدي.
+**إرسال البريد:** الرسائل تُحفظ في `email_outbox` وتُرسل عبر HTTPS API (Brevo أو Resend) بالمتغيرات `HUB_MAIL_PROVIDER`, `HUB_MAIL_API_KEY`, `HUB_MAIL_FROM`. لا SMTP إطلاقًا (Render Free يحجبه). كل رسالة تُحاول حتى 5 مرات ويُسجَّل آخر خطأ؛ مفتاح خاطئ (401/403) يوقف الدفعة فورًا.
 
 ## إضافة مصدر آلي جديد
 1. وثّق إذن إعادة الاستخدام (صفحة الشروط أو ترخيص مكتوب) في `rights_evidence` و`rights_checked_at`.

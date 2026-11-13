@@ -65,6 +65,17 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     totp_last_step: Mapped[int] = mapped_column(Integer, default=0)  # replay protection
+    email_verified_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class EmailVerification(Base):
+    __tablename__ = "email_verifications"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    email: Mapped[str] = mapped_column(String(254))  # the address being proven; stale if the account e-mail changes
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime)
+    used_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class PasswordReset(Base):
@@ -219,6 +230,9 @@ class Opportunity(Base):
     fingerprint: Mapped[str] = mapped_column(String(64), index=True)
     title: Mapped[str] = mapped_column(String(300))
     summary: Mapped[str] = mapped_column(Text, default="")
+    # "source": text as published by the source (shown only if the source's rights allow republication)
+    # "reviewer": written by our reviewer in their own words (always publishable)
+    summary_origin: Mapped[str] = mapped_column(String(20), default="source")
     city: Mapped[str | None] = mapped_column(String(80), nullable=True)
     region: Mapped[str | None] = mapped_column(String(80), nullable=True)
     trades: Mapped[list] = mapped_column(JSON, default=list)
@@ -316,6 +330,9 @@ class EmailOutbox(Base):
     body: Mapped[str] = mapped_column(Text)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
     sent_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    provider_message_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class AuditLog(Base):
