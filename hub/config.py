@@ -9,6 +9,31 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def load_dotenv(path: Path = ROOT / ".env") -> None:
+    """Read KEY=VALUE lines from a local .env (e.g. written by `neon init`). Real environment variables win.
+    The file is git-ignored and never printed."""
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.removeprefix("export ").partition("=")
+        key, value = key.strip(), value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+            value = value[1:-1]
+        os.environ.setdefault(key, value)
+
+
+if os.environ.get("HUB_ENV") != "test":
+    load_dotenv()
+
+
+def _default_db_url() -> str:
+    # HUB_DATABASE_URL wins; DATABASE_URL is what Neon (`neon init`) and most hosts provide
+    return os.environ.get("HUB_DATABASE_URL") or os.environ.get("DATABASE_URL") or f"sqlite:///{ROOT / 'data' / 'hub.db'}"
+
+
 def _bool(name: str, default: bool) -> bool:
     v = os.environ.get(name)
     return default if v is None else v.strip().lower() in {"1", "true", "yes", "on"}
@@ -17,7 +42,7 @@ def _bool(name: str, default: bool) -> bool:
 @dataclass
 class Settings:
     env: str = field(default_factory=lambda: os.environ.get("HUB_ENV", "development"))
-    database_url: str = field(default_factory=lambda: os.environ.get("HUB_DATABASE_URL", f"sqlite:///{ROOT / 'data' / 'hub.db'}"))
+    database_url: str = field(default_factory=_default_db_url)
     secret_key: str = field(default_factory=lambda: os.environ.get("HUB_SECRET_KEY", ""))
     base_url: str = field(default_factory=lambda: os.environ.get("HUB_BASE_URL", "http://127.0.0.1:8000"))
     # private product files: NEVER under a static/public directory
