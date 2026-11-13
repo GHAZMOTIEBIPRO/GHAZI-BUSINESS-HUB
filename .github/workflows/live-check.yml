@@ -13,13 +13,18 @@ on:
         default: true
   schedule:
     - cron: "41 3 * * *"     # daily read-only check (06:41 Riyadh)
+  push:
+    branches: [main]         # after a merge: wait until Render serves this commit, then verify it
   # not on PR pushes: this checks the DEPLOYED site (main), not the PR's code
 permissions:
   contents: read
+concurrency:
+  group: live-check
+  cancel-in-progress: false
 jobs:
   live:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 35
     env:
       URL: ${{ inputs.url || vars.HUB_BASE_URL || 'https://ghazi-business-hub-dd3h.onrender.com' }}
     steps:
@@ -28,10 +33,23 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install httpx==0.28.1
+      - name: Wait until Render serves this commit (push to main only, up to 20 min)
+        if: github.event_name == 'push'
+        run: |
+          want=${GITHUB_SHA:0:12}
+          for i in $(seq 1 80); do
+            got=$(curl -s --max-time 60 "$URL/healthz" | jq -r '.commit // empty' 2>/dev/null || true)
+            echo "attempt $i: live commit='${got}' expected='${want}'"
+            [ "$got" = "$want" ] && exit 0
+            sleep 15
+          done
+          echo "::error::Render did not deploy ${want} within 20 minutes (still serving '${got}'). A failed health check keeps the previous version: check HUB_DATABASE_URL in Render."
+          exit 1
       - name: HTTP acceptance checks
         run: |
           set -o pipefail   # without it `| tee` would hide a failing check
           FLAGS=""
+          if [ "${{ github.event_name }}" = "push" ]; then FLAGS="--write"; fi
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.write }}" = "true" ]; then FLAGS="--write"; fi
           python scripts/live_check.py "$URL" $FLAGS --out live-results.json | tee live-check.txt
       - name: Phone + desktop screenshots
