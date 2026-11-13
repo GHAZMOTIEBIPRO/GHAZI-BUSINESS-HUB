@@ -385,8 +385,8 @@ def test_migration_downgrade_and_upgrade(database):
         tables = set(dbm.engine.dialect.get_table_names(conn))
         assert {"procurement_tenders", "procurement_issuers", "companies", "company_aliases", "tender_bids", "tender_awards",
                 "procurement_sources", "source_licenses", "import_batches", "import_rejects", "verification_events",
-                "change_history"} <= tables
-        assert conn.execute(text("select version_num from alembic_version_archive")).scalar() == "0001"
+                "change_history", "subcontract_opportunities"} <= tables
+        assert conn.execute(text("select version_num from alembic_version_archive")).scalar() == "0002"
 
 
 # ------------------------------------------------------------------ the real package (local only)

@@ -375,6 +375,9 @@ class Importer:
             s.add(company)
             s.flush()
             counts["companies_new"] += 1
+        hops = 0
+        while company.merged_into_id and hops < 5:  # a name merged by verified CR belongs to the surviving row
+            company, hops = s.get(Company, company.merged_into_id), hops + 1
         self._company_ids[key] = company.id
         if (company.id, name) not in self._aliases_seen:
             if not s.scalars(select(CompanyAlias.id).where(CompanyAlias.company_id == company.id,
@@ -526,7 +529,9 @@ class Importer:
             out["awards_deleted"] = s.execute(delete(TenderAward).where(TenderAward.first_batch_id == batch_id)).rowcount
             out["tenders_deleted"] = s.execute(delete(ProcurementTender).where(ProcurementTender.first_batch_id == batch_id)).rowcount
             out["aliases_deleted"] = s.execute(delete(CompanyAlias).where(CompanyAlias.first_batch_id == batch_id)).rowcount
+            # a row a person verified or merged by CR is curation, not import output: it stays
             orphan_companies = select(Company.id).where(Company.first_batch_id == batch_id,
+                                                        Company.identity_status == "name_only_unverified",
                                                         ~Company.bids.any(), ~Company.awards.any())
             out["companies_deleted"] = s.execute(delete(Company).where(Company.id.in_(orphan_companies))).rowcount
             used_issuers = select(ProcurementTender.issuer_id).where(ProcurementTender.issuer_id.is_not(None))

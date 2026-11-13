@@ -14,7 +14,26 @@
       <dt>الجهات التي تقدمت لها</dt><dd>{{ p.issuers|join('، ') if p.issuers else '—' }}</dd></dl>
       {% if p.similar %}<p class="small muted" id="similarNote">أسماء متشابهة كتابيًا (لم تُدمج — قد تكون كيانات مختلفة):
         {% for s in p.similar %}<a href="/admin/archive/companies/{{ s.id }}">{{ s.display_name }}</a>{{ '، ' if not loop.last }}{% endfor %}</p>{% endif %}
+      {% if merged_into %}<p class="flash" id="mergedNote">هذا الاسم دُمج في <a href="/admin/archive/companies/{{ merged_into.id }}">{{ merged_into.display_name }}</a> لأن الرقم نفسه متحقق منه.</p>
+        {% if user.role=='admin' %}<form method="post" action="/admin/archive/companies/{{ c.id }}/unmerge">{{ m.csrf_field() }}<button class="btn btn-outline" type="submit">تراجع عن الدمج</button></form>{% endif %}{% endif %}
+      {% if merged_from %}<p class="small" id="mergedFrom">أسماء دُمجت هنا بنفس الرقم: {% for s in merged_from %}<a href="/admin/archive/companies/{{ s.id }}">{{ s.display_name }}</a>{{ '، ' if not loop.last }}{% endfor %}</p>{% endif %}
     </section>
+    {% if user.role=='admin' and not merged_into %}
+    <section class="card" id="identityForm"><h2>تسجيل الهوية الرسمية</h2>
+      <p class="small muted">أدخل الرقم كما يظهر في مصدر رسمي (مثل شهادة السجل التجاري أو منصة مقاول) مع رابط الدليل. الاسم وحده لا يكفي.</p>
+      <form class="stack" method="post" action="/admin/archive/companies/{{ c.id }}/identity">{{ m.csrf_field() }}
+        <label>رقم السجل التجاري (10 أرقام)<input type="text" name="cr_number" inputmode="numeric" maxlength="14" dir="ltr"></label>
+        <label>الرقم الموحد (يبدأ بـ 7)<input type="text" name="unified_number" inputmode="numeric" maxlength="14" dir="ltr"></label>
+        <label>رابط الدليل (https)<input name="evidence_url" type="url" required maxlength="500" dir="ltr"></label>
+        <button class="btn btn-primary" type="submit">تسجيل</button></form>
+      {% if conflict %}<div class="mt" id="mergeForm"><p class="small">الرقم مسجل على <a href="/admin/archive/companies/{{ conflict.id }}">{{ conflict.display_name }}</a>.
+        إن كان الكيان نفسه، ادمج هذا الاسم فيه بإعادة إدخال الرقم ورابط الدليل:</p>
+        <form class="stack" method="post" action="/admin/archive/companies/{{ c.id }}/merge">{{ m.csrf_field() }}
+          <input type="hidden" name="target_id" value="{{ conflict.id }}">
+          <label>الرقم نفسه<input type="text" name="registry_number" required inputmode="numeric" maxlength="14" dir="ltr"></label>
+          <label>رابط الدليل (https)<input name="evidence_url" type="url" required maxlength="500" dir="ltr"></label>
+          <button class="btn btn-outline" type="submit">دمج (قابل للتراجع)</button></form></div>{% endif %}
+    </section>{% endif %}
     <section class="card"><h2>النشاط حسب السنة</h2>
       <div class="table-wrap"><table><thead><tr><th>السنة</th><th>مشاركات</th><th>فوز</th><th>قيمة الترسيات</th></tr></thead><tbody>
       {% for y, r in p.by_year.items() %}<tr><td class="num">{{ y }}</td><td class="num">{{ r.bids }}</td><td class="num">{{ r.wins }}</td><td class="num">{{ money(r.award_total) }}</td></tr>

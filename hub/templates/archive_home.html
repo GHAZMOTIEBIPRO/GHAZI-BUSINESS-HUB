@@ -5,7 +5,7 @@
 <div class="wrap">
   <div class="page-head row-between"><div><p><a href="/admin">← الإدارة</a></p><h1>أرشيف المناقصات والمتقدمين والترسيات</h1>
     <p class="muted small" id="privacyNote">خاص بفريق المنصة. كل السجلات <b>غير منشورة</b> حتى يُوثق حق إعادة استخدام مصدرها. العروض المعروضة هي الظاهرة علنًا فقط وليست بالضرورة كل المتقدمين، والفائز لا يُستنتج من أقل عرض.</p></div>
-    <div class="actions"><a class="btn btn-outline" href="/admin/archive/companies">الشركات</a><a class="btn btn-outline" href="/admin/archive/sources">المصادر والتراخيص</a>{% if user.role=='admin' %}<a class="btn btn-primary" href="/admin/archive/import">استيراد حزمة</a>{% endif %}</div></div>
+    <div class="actions"><a class="btn btn-outline" href="/admin/archive/companies">الشركات</a><a class="btn btn-outline" href="/admin/archive/sources">المصادر والتراخيص</a><a class="btn btn-outline" href="/admin/archive/subcontracts">فرص الباطن المؤكدة</a>{% if user.role=='admin' %}<a class="btn btn-primary" href="/admin/archive/import">استيراد حزمة</a>{% endif %}</div></div>
 
   <div class="grid g4 mb" id="archiveStats">
     <div class="card"><div class="muted small">منافسات (حقيقية)</div><div class="stat num">{{ stats.tenders }}</div></div>
@@ -18,17 +18,17 @@
 
   <form class="card filters" method="get" action="/admin/archive" aria-label="بحث في الأرشيف">
     <div class="grid g4">
-      <label>بحث بالعنوان أو الرقم<input name="q" value="{{ f.q }}" maxlength="120"></label>
+      <label>بحث بالعنوان أو الرقم<input type="text" name="q" value="{{ f.q }}" maxlength="120"></label>
       <label>السنة<select name="year"><option value="">الكل</option>{% for y in facets.years %}<option {{ 'selected' if f.year==y }}>{{ y }}</option>{% endfor %}</select></label>
       <label>المدينة<select name="city"><option value="">الكل</option>{% for c in facets.cities %}<option {{ 'selected' if f.city==c }}>{{ c }}</option>{% endfor %}</select></label>
       <label>المنطقة<select name="region"><option value="">الكل</option>{% for r in facets.regions %}<option {{ 'selected' if f.region==r }}>{{ r }}</option>{% endfor %}</select></label>
-      <label>الجهة الطارحة<input name="issuer" value="{{ f.issuer }}" maxlength="120"></label>
+      <label>الجهة الطارحة<input type="text" name="issuer" value="{{ f.issuer }}" maxlength="120"></label>
       <label>التخصص<select name="trade"><option value="">الكل</option>{% for t in TRADES %}<option {{ 'selected' if f.trade==t }}>{{ t }}</option>{% endfor %}</select></label>
-      <label>اسم شركة (متقدمة أو فائزة)<input name="company" value="{{ f.company }}" maxlength="120"></label>
+      <label>اسم شركة (متقدمة أو فائزة)<input type="text" name="company" value="{{ f.company }}" maxlength="120"></label>
       <label>الحالة<select name="status"><option value="">الكل</option>{% for k, v in TENDER_STATUS.items() %}<option value="{{ k }}" {{ 'selected' if f.status==k }}>{{ v }}</option>{% endfor %}</select></label>
       <label>التصنيف<select name="lifecycle"><option value="">الكل</option>{% for k, v in LIFECYCLE.items() %}<option value="{{ k }}" {{ 'selected' if f.lifecycle==k }}>{{ v }}</option>{% endfor %}</select></label>
-      <label>قيمة الترسية من (ر.س)<input name="min_value" inputmode="numeric" value="{{ f.min_value or '' }}"></label>
-      <label>إلى (ر.س)<input name="max_value" inputmode="numeric" value="{{ f.max_value or '' }}"></label>
+      <label>قيمة الترسية من (ر.س)<input type="text" name="min_value" inputmode="numeric" value="{{ f.min_value or '' }}"></label>
+      <label>إلى (ر.س)<input type="text" name="max_value" inputmode="numeric" value="{{ f.max_value or '' }}"></label>
     </div>
     <div class="actions mt"><button class="btn btn-primary" type="submit">بحث</button><a class="btn btn-outline" href="/admin/archive">مسح</a></div>
   </form>

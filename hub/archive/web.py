@@ -10,11 +10,15 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..models import TRADES
+from . import curation
+from .curation import CurationError
 from .importer import MAX_PACKAGE_BYTES, Importer, PackageError
 from .models import (
+    EVIDENCE_KINDS,
     IDENTITY,
     LIFECYCLE,
     RIGHTS,
+    SUBCONTRACT_REVIEW,
     TENDER_STATUS,
     VISIBILITY,
     Company,
@@ -22,6 +26,7 @@ from .models import (
     ImportReject,
     ProcurementSource,
     ProcurementTender,
+    SubcontractOpportunity,
     TenderAward,
     TenderBid,
 )
@@ -29,7 +34,7 @@ from .search import company_profile, facets, parse_filters, search_companies, se
 from .sources import ensure_sources
 
 LABELS = dict(TENDER_STATUS=TENDER_STATUS, LIFECYCLE=LIFECYCLE, RIGHTS=RIGHTS, VISIBILITY=VISIBILITY, IDENTITY=IDENTITY,
-              TRADES=TRADES)
+              TRADES=TRADES, SUBCONTRACT_REVIEW=SUBCONTRACT_REVIEW, EVIDENCE_KINDS=EVIDENCE_KINDS)
 
 
 def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
@@ -46,6 +51,9 @@ def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
             "by_lifecycle": dict(db.execute(select(ProcurementTender.lifecycle, func.count()).where(
                 ProcurementTender.is_synthetic.is_(False)).group_by(ProcurementTender.lifecycle)).all()),
         }
+        # D lives in its own table and counts only after a second person confirmed the evidence
+        stats["by_lifecycle"]["D_subcontract_confirmed"] = db.scalar(select(func.count(SubcontractOpportunity.id)).where(
+            SubcontractOpportunity.review_status == "confirmed", SubcontractOpportunity.status == "open"))
         batches = db.scalars(select(ImportBatch).order_by(ImportBatch.id.desc()).limit(10)).all()
         return render(request, "archive_home.html", db, user, rows=rows, total=total, f=f, facets=facets(db),
                       stats=stats, batches=batches, pages=max(1, -(-total // 50)), **LABELS)
@@ -69,7 +77,95 @@ def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
         prof = company_profile(db, company_id)
         if prof is None:
             raise HTTPException(404)
-        return render(request, "archive_company.html", db, user, p=prof, **LABELS)
+        conflict_id = request.query_params.get("conflict", "")
+        conflict = db.get(Company, int(conflict_id)) if conflict_id.isdigit() else None
+        merged_into = db.get(Company, prof["company"].merged_into_id) if prof["company"].merged_into_id else None
+        merged_from = db.scalars(select(Company).where(Company.merged_into_id == company_id)).all()
+        return render(request, "archive_company.html", db, user, p=prof, conflict=conflict, merged_into=merged_into,
+                      merged_from=merged_from, **LABELS)
+
+    # ---- identity (admin): a CR / unified number with an evidence link; merge only on the same verified number
+    def _company_action(company_id: int, db: Session, work, ok_msg: str):
+        try:
+            work()
+        except CurationError as exc:
+            db.rollback()
+            url = f"/admin/archive/companies/{company_id}"
+            if exc.conflict_company_id:
+                url += f"?conflict={exc.conflict_company_id}"
+            return redirect(url, str(exc))
+        db.commit()
+        return redirect(f"/admin/archive/companies/{company_id}", ok_msg)
+
+    @app.post("/admin/archive/companies/{company_id}/identity", dependencies=[Depends(verify_csrf)])
+    async def archive_company_identity(company_id: int, request: Request, db: Session = Depends(get_db),
+                                       user=Depends(admin_only)):
+        form = await request.form()
+        return _company_action(company_id, db, lambda: curation.verify_identity(
+            db, company_id, cr_number=str(form.get("cr_number") or ""), unified_number=str(form.get("unified_number") or ""),
+            evidence_url=str(form.get("evidence_url") or ""), by=user.email), "سُجّل رقم الهوية مع الدليل")
+
+    @app.post("/admin/archive/companies/{company_id}/merge", dependencies=[Depends(verify_csrf)])
+    async def archive_company_merge(company_id: int, request: Request, db: Session = Depends(get_db),
+                                    user=Depends(admin_only)):
+        form = await request.form()
+        target = str(form.get("target_id") or "")
+        if not target.isdigit():
+            return redirect(f"/admin/archive/companies/{company_id}", "اختر الكيان الهدف")
+        return _company_action(company_id, db, lambda: curation.merge_companies(
+            db, company_id, int(target), registry_number=str(form.get("registry_number") or ""),
+            evidence_url=str(form.get("evidence_url") or ""), by=user.email), "تم الدمج بنفس رقم السجل (قابل للتراجع)")
+
+    @app.post("/admin/archive/companies/{company_id}/unmerge", dependencies=[Depends(verify_csrf)])
+    def archive_company_unmerge(company_id: int, db: Session = Depends(get_db), user=Depends(admin_only)):
+        return _company_action(company_id, db, lambda: curation.unmerge_company(db, company_id, by=user.email),
+                               "تم التراجع عن الدمج")
+
+    # ---- lifecycle D: subcontract opportunities with evidence, confirmed by a second staff member
+    @app.get("/admin/archive/subcontracts", response_class=HTMLResponse)
+    def archive_subcontracts(request: Request, review: str = "", db: Session = Depends(get_db), user=Depends(staff)):
+        stmt = select(SubcontractOpportunity).options(selectinload(SubcontractOpportunity.main_contractor))
+        if review in SUBCONTRACT_REVIEW:
+            stmt = stmt.where(SubcontractOpportunity.review_status == review)
+        rows = db.scalars(stmt.order_by(SubcontractOpportunity.id.desc()).limit(200)).all()
+        counts = dict(db.execute(select(SubcontractOpportunity.review_status, func.count())
+                                 .group_by(SubcontractOpportunity.review_status)).all())
+        return render(request, "archive_subcontracts.html", db, user, rows=rows, review=review, counts=counts,
+                      error=None, form={}, **LABELS)
+
+    @app.post("/admin/archive/subcontracts", dependencies=[Depends(verify_csrf)])
+    async def archive_subcontract_add(request: Request, db: Session = Depends(get_db), user=Depends(staff)):
+        form = {k: str(v) for k, v in (await request.form()).items() if isinstance(v, str)}
+
+        def num(key):
+            v = form.get(key, "").strip()
+            return int(v) if v.isdigit() else None
+        try:
+            curation.add_subcontract(
+                db, user_id=user.id, title=form.get("title", ""), main_contractor_name=form.get("main_contractor_name", ""),
+                evidence_kind=form.get("evidence_kind", ""), evidence_url=form.get("evidence_url", ""),
+                trade=form.get("trade", ""), city=form.get("city", ""), evidence_note=form.get("evidence_note", ""),
+                published_date=form.get("published_date", ""), response_deadline=form.get("response_deadline", ""),
+                main_contractor_company_id=num("main_contractor_company_id"), related_tender_id=num("related_tender_id"))
+        except CurationError as exc:
+            db.rollback()
+            rows = db.scalars(select(SubcontractOpportunity).order_by(SubcontractOpportunity.id.desc()).limit(200)).all()
+            return render(request, "archive_subcontracts.html", db, user, status=400, rows=rows, review="", counts={},
+                          error=str(exc), form=form, **LABELS)
+        db.commit()
+        return redirect("/admin/archive/subcontracts", "أُدخلت الفرصة وهي بانتظار مراجعة شخص ثانٍ")
+
+    @app.post("/admin/archive/subcontracts/{op_id}/review", dependencies=[Depends(verify_csrf)])
+    async def archive_subcontract_review(op_id: int, request: Request, db: Session = Depends(get_db), user=Depends(staff)):
+        form = await request.form()
+        try:
+            curation.review_subcontract(db, op_id, user_id=user.id, decision=str(form.get("decision") or ""),
+                                        note=str(form.get("note") or ""))
+        except CurationError as exc:
+            db.rollback()
+            return redirect("/admin/archive/subcontracts", str(exc))
+        db.commit()
+        return redirect("/admin/archive/subcontracts", "سُجّلت المراجعة")
 
     @app.get("/admin/archive/sources", response_class=HTMLResponse)
     def archive_sources(request: Request, db: Session = Depends(get_db), user=Depends(staff)):

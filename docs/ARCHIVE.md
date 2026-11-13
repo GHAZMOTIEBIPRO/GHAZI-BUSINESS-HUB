@@ -15,10 +15,34 @@
   الفئة D لا تُشتق من أي ترسية؛ تدخل فقط بدليل ومراجعة بشرية.
 - **الاصطناعي لا يختلط بالحقيقي:** `is_synthetic=true`، مرجع `SYN-`، أسماء تبدأ بـ«اصطناعي»، ومستبعد من البحث افتراضيًا.
 
-## الجداول (Alembic `migrations/versions/0001_procurement_archive.py`)
-`procurement_sources`, `source_licenses`, `import_batches`, `import_rejects`, `procurement_issuers`, `companies`,
-`company_aliases`, `procurement_tenders`, `tender_bids`, `tender_awards`, `verification_events`, `change_history`.
+## الجداول (Alembic `migrations/versions/`)
+- `0001`: `procurement_sources`, `source_licenses`, `import_batches`, `import_rejects`, `procurement_issuers`,
+  `companies`, `company_aliases`, `procurement_tenders`, `tender_bids`, `tender_awards`, `verification_events`,
+  `change_history`.
+- `0002`: `subcontract_opportunities`، والعمود `companies.merged_into_id`، والعمود `change_history.event_id`
+  (يجمع تغييرات إجراء يدوي واحد حتى يمكن التراجع عنه).
+
 جدول الإصدارات منفصل: `alembic_version_archive`. التطبيق يشغّل `upgrade head` عند الإقلاع.
+
+## التنقيح اليدوي والأتمتة (`hub/archive/curation.py`)
+- **تحديث دورة الحياة تلقائيًا** ضمن مهمة `radar-refresh` كل ساعتين:
+  - المنافسة المفتوحة التي مضى موعدها المنشور تصبح `B_closed`. لا يُجلب أي شيء من مصدر خارجي.
+  - كل تغيير يُسجَّل في `change_history`، والعدد يظهر في ملخص التشغيل (`archive_closed`).
+  - فرص الباطن التي مضى موعد الرد عليها تُغلق (`subcontracts_closed`).
+- **تسجيل الهوية** (مدير فقط + CSRF) من صفحة الشركة:
+  - المطلوب: رقم سجل تجاري (10 أرقام) أو رقم موحد (10 أرقام يبدأ بـ 7)، مع رابط دليل `https`.
+  - الأرقام العربية مقبولة.
+  - لا يُستبدل رقم متحقق منه برقم آخر.
+- **الدمج بنفس الرقم فقط:**
+  - إذا أُدخل رقم مسجل لكيان آخر، تعرض الصفحة التعارض ولا تدمج تلقائيًا.
+  - الدمج يتطلب إعادة إدخال الرقم نفسه المتحقق منه على الكيان الهدف. سجلان برقمين مختلفين لا يُدمجان أبدًا.
+  - الدمج ينقل العروض والترسيات والأسماء البديلة ويسجّل كل نقل، والزر «تراجع عن الدمج» يعيدها كما كانت.
+  - الاستيرادات اللاحقة للاسم المدموج تُربط بالكيان الباقي.
+  - `rollback` لدفعة لا يحذف شركة متحقق منها أو مدموجة.
+- **فرص الباطن المؤكدة (D)** في `/admin/archive/subcontracts`:
+  - تُدخل يدويًا مع نوع الدليل ورابط `https`.
+  - تبقى «بانتظار مراجعة شخص ثانٍ» حتى يؤكدها موظف غير الذي أدخلها، وعدّاد D في الأرشيف يحسب المؤكدة المفتوحة فقط.
+  - لا تُنشأ أبدًا من منافسة أو ترسية. `related_tender_id` للسياق فقط.
 
 ## أمر الاستيراد
 ```

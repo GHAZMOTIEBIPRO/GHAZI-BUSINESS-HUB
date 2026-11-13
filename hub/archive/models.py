@@ -61,6 +61,17 @@ VISIBILITY = {
 IDENTITY = {
     "name_only_unverified": "اسم كما نُشر فقط — الهوية غير متحقق منها",
     "registry_verified": "متحقق بالسجل التجاري / الرقم الموحد",
+    "merged_same_registry": "دُمج في كيان يحمل نفس السجل التجاري",
+}
+SUBCONTRACT_REVIEW = {
+    "pending_second_review": "بانتظار مراجعة شخص ثانٍ",
+    "confirmed": "مؤكدة بدليل ومراجعة",
+    "rejected": "مرفوضة في المراجعة",
+}
+EVIDENCE_KINDS = {
+    "company_announcement": "إعلان منشور من الشركة / المطور",
+    "official_letter": "خطاب أو طلب رسمي من المقاول الرئيسي",
+    "direct_contact": "تواصل مباشر موثق مع المقاول الرئيسي",
 }
 
 
@@ -148,6 +159,8 @@ class Company(ArchiveBase):
     cr_number: Mapped[str | None] = mapped_column(String(20), unique=True)
     unified_number: Mapped[str | None] = mapped_column(String(20), unique=True)
     identity_status: Mapped[str] = mapped_column(String(30), default="name_only_unverified")
+    # set only by a merge of two rows that carry the same CR / unified number (hub/archive/curation.py)
+    merged_into_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"), index=True)
     specialties: Mapped[list] = mapped_column(JSON, default=list)
     cities: Mapped[list] = mapped_column(JSON, default=list)
     first_batch_id: Mapped[int | None] = mapped_column(ForeignKey("import_batches.id", ondelete="SET NULL"))
@@ -278,4 +291,40 @@ class ChangeHistory(ArchiveBase):
     field: Mapped[str] = mapped_column(String(60))
     old_value: Mapped[str | None] = mapped_column(Text)
     new_value: Mapped[str | None] = mapped_column(Text)
+    # groups the rows of one manual action (identity merge, lifecycle run) so it can be undone as a unit
+    event_id: Mapped[int | None] = mapped_column(ForeignKey("verification_events.id", ondelete="SET NULL"), index=True)
     at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class SubcontractOpportunity(ArchiveBase):
+    """Lifecycle D. Entered by staff with evidence; confirmed only by a SECOND staff member.
+
+    Never created from a tender or an award: an awarded tender is not, by itself, a subcontract opportunity.
+    `related_tender_id` is context only.
+    """
+    __tablename__ = "subcontract_opportunities"
+    __table_args__ = (Index("ix_subcontract_review", "review_status", "status"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(300))
+    trade: Mapped[str] = mapped_column(String(60), default="")
+    city: Mapped[str | None] = mapped_column(String(100))
+    region: Mapped[str | None] = mapped_column(String(100))
+    main_contractor_name: Mapped[str] = mapped_column(String(300))
+    main_contractor_company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id", ondelete="SET NULL"), index=True)
+    related_tender_id: Mapped[int | None] = mapped_column(ForeignKey("procurement_tenders.id", ondelete="SET NULL"))
+    evidence_kind: Mapped[str] = mapped_column(String(30))
+    evidence_url: Mapped[str] = mapped_column(String(500))
+    evidence_note: Mapped[str] = mapped_column(Text, default="")
+    published_date: Mapped[dt.date | None] = mapped_column(Date)
+    response_deadline: Mapped[dt.date | None] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="open")  # open | closed
+    review_status: Mapped[str] = mapped_column(String(30), default="pending_second_review")
+    visibility: Mapped[str] = mapped_column(String(20), default="archive_private")
+    publish_allowed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by_user_id: Mapped[int] = mapped_column(Integer)
+    reviewed_by_user_id: Mapped[int | None] = mapped_column(Integer)
+    reviewed_at: Mapped[dt.datetime | None] = mapped_column(DateTime)
+    review_note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
+    main_contractor: Mapped[Company | None] = relationship(foreign_keys=[main_contractor_company_id])
+    related_tender: Mapped[ProcurementTender | None] = relationship()
