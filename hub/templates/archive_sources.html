@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}مصادر بيانات المناقصات — الأرشيف{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><p><a href="/admin/archive">← الأرشيف</a></p><h1>مصادر بيانات المناقصات والتراخيص</h1>
+    <p class="muted small">«غير معلوم» يعني لم نستطع التحقق، ولا يُفسَّر سماحًا. لا يُفعَّل جلب آلي لمصدر قبل توثيق ترخيصه وتشغيل ناجح يثبت وصول سجل صحيح.</p></div>
+  <p id="automationSummary"><b>مصادر آلية مفعلة: {{ sources|selectattr('automation_enabled')|list|length }}</b> من {{ sources|length }}.</p>
+  <div class="table-wrap"><table id="sourcesMatrix"><thead><tr><th>المصدر</th><th>الجهة</th><th>طريقة الوصول</th><th>API رسمية</th><th>تصدير</th><th>إعادة استخدام تجاري</th><th>اشتراك/اتفاقية</th><th>السجلات</th><th>السنوات</th><th>آلي</th><th>آخر اختبار</th><th>ملاحظات</th></tr></thead><tbody>
+  {% for s in sources %}<tr id="src-{{ s.key }}"><td>{% if s.url %}<a href="{{ s.url }}" rel="noopener noreferrer nofollow" target="_blank">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td><td class="small">{{ s.owner }}</td>
+    <td class="small">{{ s.access_method }}</td><td class="small">{{ s.official_api }}</td><td class="small">{{ s.export_available }}</td><td class="small">{{ s.commercial_reuse }}</td>
+    <td class="small">{{ s.requires_subscription }}</td><td class="small">{{ s.record_types }}</td><td class="small">{{ s.years_covered or '—' }}</td>
+    <td><span class="badge {{ 'b-ok' if s.automation_enabled else 'b-bad' }}">{{ 'مفعل' if s.automation_enabled else 'غير مفعل' }}</span></td>
+    <td class="small">{{ ksa(s.last_probe_at, '%Y-%m-%d') if s.last_probe_at else '—' }} {{ s.last_probe_result }}</td>
+    <td class="small">{{ s.notes }}{% if s.evidence_url %} <a href="{{ s.evidence_url }}" rel="noopener noreferrer nofollow" target="_blank">الدليل</a>{% endif %}
+      {% for l in s.licenses %}<div class="muted">الرخصة: {{ l.license_name }} — {{ l.status }}</div>{% endfor %}</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from . import db as dbm
 from . import mailer
+from .archive import curation as archive_curation
 from .config import ROOT, settings
 from .db import utcnow
 from .models import EmailOutbox, JobRun, Notification, Opportunity, Product, Source, User
@@ -123,13 +124,16 @@ def refresh(db: Session, now: dt.datetime | None = None, transport=None) -> dict
     automated = select(Source).where(Source.kind.not_in(["manual", "csv_import"]))  # manual sources have nothing to fetch
     runs = [run_source(db, s, now, transport=transport) for s in db.scalars(automated).all()]
     stale = mark_stale_and_closed(db, now)
+    # procurement archive: dates already stored decide; nothing is fetched from any outside source
+    archive = archive_curation.refresh_lifecycle(db, now.date())
+    archive["subcontracts_closed"] = archive_curation.close_due_subcontracts(db, now.date())
     alerts = send_user_alerts(db)
     admin_alerts = alert_admins_on_health(db, now)
     db.commit()
     mail = mailer.send_pending(db)
     return {"runs": [{"source": r.source_id, "outcome": r.outcome, "reason": r.reason, "new": r.items_new,
                       "updated": r.items_updated, "review": r.items_to_review} for r in runs],
-            **stale, "user_alerts": alerts, "admin_alerts": admin_alerts, "mail": mail}
+            **stale, **archive, "user_alerts": alerts, "admin_alerts": admin_alerts, "mail": mail}
 
 
 def recorded_refresh(db: Session, trigger: str, now: dt.datetime | None = None, transport=None) -> dict:
@@ -150,7 +154,7 @@ def recorded_refresh(db: Session, trigger: str, now: dt.datetime | None = None, 
     run.finished_at, run.ok = utcnow(), True
     run.summary = {"runs": len(result["runs"]), "user_alerts": result["user_alerts"],
                    "admin_alerts": result["admin_alerts"], "mail_sent": result["mail"].get("sent", 0),
-                   **{k: v for k, v in result.items() if k in ("stale", "closed")}}
+                   **{k: v for k, v in result.items() if k in ("stale", "closed", "archive_closed", "subcontracts_closed")}}
     db.commit()
     return {**result, "job_run_id": run_id}
 
@@ -161,6 +165,8 @@ def last_job_runs(db: Session, limit: int = 5) -> list[JobRun]:
 
 def main(argv):
     dbm.init_db()
+    from .archive.migrate import upgrade as archive_upgrade
+    archive_upgrade(dbm.engine)  # refresh also maintains the archive lifecycle
     with dbm.SessionLocal() as db:
         if argv[:1] == ["seed"]:
             seed(db)

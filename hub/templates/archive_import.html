@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}استيراد حزمة مناقصات — الأرشيف{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><p><a href="/admin/archive">← الأرشيف</a></p><h1>استيراد حزمة مناقصات</h1>
+    <p class="muted small">الحزمة تُكتب في منطقة استيراد خاصة ولا تُنشر. استخدم «فحص فقط» أولًا. التراجع متاح من صفحة الدفعة.</p></div>
+  {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+  <form class="card stack" method="post" action="/admin/archive/import" enctype="multipart/form-data">{{ m.csrf_field() }}
+    <label>ملف الحزمة (ZIP بنفس هيكل حزمة 2026-11-13، حتى 25 ميجابايت)<input type="file" name="file" accept=".zip,application/zip" required></label>
+    <fieldset><legend>الوضع</legend>
+      <label class="check"><input type="radio" name="mode" value="dry-run" checked> فحص فقط (لا كتابة)</label>
+      <label class="check"><input type="radio" name="mode" value="validate"> فحص ومقارنة بالأرشيف (قراءة فقط)</label>
+      <label class="check"><input type="radio" name="mode" value="staging"> كتابة في منطقة الاستيراد الخاصة</label></fieldset>
+    <button class="btn btn-primary" type="submit">تشغيل</button>
+  </form>
+  {% if report %}<section class="card mt" id="importReport"><h2>النتيجة ({{ report.mode }}){% if report.batch_id %} — <a href="/admin/archive/batches/{{ report.batch_id }}">الدفعة #{{ report.batch_id }}</a>{% endif %}</h2>
+    <p class="num">مقروء: منافسات {{ report.read.tenders }}، عروض {{ report.read.bids }}، أسماء {{ report.read.companies }} — مقبول: منافسات {{ report.accepted.tenders }}، عروض {{ report.accepted.bids }} — مرفوض {{ report.rejected_count }}، تحذيرات {{ report.warnings_count }}</p>
+    {% if report.batch_counts %}<p class="num">هذه الدفعة: {{ report.batch_counts }}</p>{% endif %}
+    <p>المتقدمون: {{ report.bidders.known_bid_rows }} عرضًا معروفًا؛ في {{ report.bidders.tenders_with_claimed_count }} منافسة معلن فيها {{ report.bidders.claimed_offers_total }} عرضًا، المعروف بالاسم منها {{ report.bidders.known_bids_in_those_tenders }}.</p>
+    {% if report.rejected %}<h3>المرفوض</h3><ul>{% for r in report.rejected %}<li>{{ r.file }} صف {{ r.row }}: {{ r.reason }}</li>{% endfor %}</ul>{% endif %}
+    {% if report.warnings %}<h3>تحذيرات</h3><ul>{% for r in report.warnings %}<li>{{ r.file }} صف {{ r.row }}: {{ r.reason }}</li>{% endfor %}</ul>{% endif %}
+  </section>{% endif %}
+</div>
+{% endblock %}

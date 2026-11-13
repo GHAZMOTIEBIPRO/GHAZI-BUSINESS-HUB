@@ -12,6 +12,8 @@ RUN pip install -r requirements.txt
 
 COPY hub ./hub
 COPY scripts ./scripts
+COPY alembic.ini ./alembic.ini
+COPY migrations ./migrations
 COPY products/catalog.json ./products/catalog.json
 COPY products/dist ./products/dist
 

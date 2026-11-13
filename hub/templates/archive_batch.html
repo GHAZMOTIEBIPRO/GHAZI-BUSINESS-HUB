@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}دفعة استيراد #{{ b.id }} — الأرشيف{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><p><a href="/admin/archive">← الأرشيف</a></p><h1>دفعة استيراد #{{ b.id }}</h1>
+    <p><span class="badge b-lead" id="batchStatus">{{ b.status }}</span>{% if b.is_synthetic %} <span class="badge b-bad">بيانات اصطناعية</span>{% endif %}</p></div>
+  <section class="card"><dl class="kv"><dt>الملف</dt><dd>{{ b.label }}</dd><dt>البصمة</dt><dd class="num small">{{ b.package_sha256 }}</dd>
+    <dt>بواسطة</dt><dd>{{ b.created_by }}</dd><dt>بدأت</dt><dd class="num">{{ ksa(b.started_at, '%Y-%m-%d %H:%M') }}</dd><dt>انتهت</dt><dd class="num">{{ ksa(b.finished_at, '%Y-%m-%d %H:%M') if b.finished_at else '—' }}</dd>
+    <dt>الأعداد</dt><dd class="num small">{{ b.counts }}</dd><dt>نقطة الاستكمال</dt><dd class="num small">{{ b.checkpoint }}</dd></dl>
+    {% if user.role=='admin' %}<div class="actions mt">
+      {% if b.status=='staged' %}<form method="post" action="/admin/archive/batches/{{ b.id }}/commit">{{ m.csrf_field() }}<button class="btn btn-primary" type="submit">اعتماد في الأرشيف الخاص</button></form>{% endif %}
+      {% if b.status in ('staged','committed','in_progress') %}<form method="post" action="/admin/archive/batches/{{ b.id }}/rollback">{{ m.csrf_field() }}<button class="btn btn-outline" type="submit">تراجع عن الدفعة</button></form>{% endif %}
+    </div>{% endif %}</section>
+  <h2 class="mt">المرفوض والتحذيرات ({{ rejects|length }})</h2>
+  <div class="table-wrap"><table><thead><tr><th>الملف</th><th>الصف</th><th>النوع</th><th>السبب</th></tr></thead><tbody>
+  {% for r in rejects %}<tr><td>{{ r.file }}</td><td class="num">{{ r.row_number }}</td><td>{{ 'مرفوض' if r.severity=='reject' else 'تحذير' }}</td><td>{{ r.reason }}</td></tr>
+  {% else %}<tr><td colspan="4" class="muted">لا شيء.</td></tr>{% endfor %}</tbody></table></div>
+</div>
+{% endblock %}

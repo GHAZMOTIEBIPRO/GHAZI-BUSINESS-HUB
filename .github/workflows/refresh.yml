@@ -42,4 +42,4 @@ jobs:
           code=$(curl -s -o out.json -w '%{http_code}' --max-time 120 -X POST -H "Authorization: Bearer $TOKEN" "$URL/internal/jobs/refresh")
           cat out.json; echo
           test "$code" = "200"
-          echo "### Refresh $(jq -r '"job_run_id=\(.job_run_id) closed=\(.closed) stale=\(.stale) user_alerts=\(.user_alerts) admin_alerts=\(.admin_alerts)"' out.json)" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Refresh $(jq -r '"job_run_id=\(.job_run_id) closed=\(.closed) stale=\(.stale) user_alerts=\(.user_alerts) admin_alerts=\(.admin_alerts) archive_closed=\(.archive_closed) subcontracts_closed=\(.subcontracts_closed)"' out.json)" >> "$GITHUB_STEP_SUMMARY"
