@@ -153,6 +153,14 @@ tr:last-child td{border-bottom:0}
 .site-footer a{color:#fff}
 .site-footer .wrap{display:grid;grid-template-columns:2fr 1fr 1fr;gap:1.5rem}
 @media (max-width:700px){.site-footer .wrap{grid-template-columns:1fr}}
+/* source directory: city / category chips and the rights-evidence disclosure */
+.chips{display:flex;flex-wrap:wrap;gap:.45rem;margin:0 0 .7rem}
+.chip{display:inline-flex;align-items:center;gap:.35rem;min-height:36px;padding:.25rem .8rem;border:1px solid var(--line);border-radius:99px;background:var(--paper);color:var(--ink);text-decoration:none;font-weight:600;font-size:.9rem}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chips.small .chip{font-weight:400;font-size:.85rem;min-height:32px}
+.src p{margin:.35rem 0}
+.evidence{margin-top:.5rem;border-top:1px solid var(--line);padding-top:.5rem}
+.evidence summary{cursor:pointer;min-height:32px;display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;font-size:.9rem}
 /* radar filter panel: a plain <details>, collapsed on phones by app.js */
 .filter-box>summary{display:none;list-style:none;cursor:pointer;margin-bottom:.6rem}
 .filter-box>summary::-webkit-details-marker{display:none}

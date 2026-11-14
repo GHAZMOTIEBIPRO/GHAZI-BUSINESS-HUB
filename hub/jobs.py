@@ -14,28 +14,27 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import db as dbm
-from . import mailer
+from . import directory, mailer
 from .config import ROOT, settings
 from .db import utcnow
 from .models import EmailOutbox, JobRun, Notification, Opportunity, Product, Source, User
 from .radar import HEALTH_LABELS, mark_stale_and_closed, match, run_source, source_health
 from .store import active_plan
 
-# Registry of real channels. rights=unknown => link-only, never fetched automatically
-# until the owner documents permission (terms page / written licence) in rights_evidence.
-SOURCE_REGISTRY = [
-    {"key": "manual-review", "name": "إدخال المراجعين (مصادر موثقة يدويًا)", "homepage": "",
-     "kind": "manual", "rights": "link_only", "trust": "review_all",
-     "notes": "كل سجل يُدخله مراجع مع رابط المصدر وتاريخ التحقق."},
-    {"key": "etimad", "name": "منصة اعتماد — المنافسات الحكومية", "homepage": "https://monafasat.etimad.sa/tenders/index",
-     "kind": "manual", "rights": "unknown", "trust": "review_all",
-     "notes": "لا جلب آلي: لم تُوثَّق شروط إعادة الاستخدام، وبعض التفاصيل تتطلب حسابًا أو رسومًا. الإشارة بالرابط فقط."},
-    {"key": "muqawil-market", "name": "منصة مقاول — سوق المشاريع", "homepage": "https://muqawil.sa/ar/market",
-     "kind": "manual", "rights": "unknown", "trust": "review_all",
-     "notes": "لا جلب آلي حتى توثيق الإذن. يُطلب من الهيئة السعودية للمقاولين واجهة أو ترخيص."},
-    {"key": "muqawil-consortium", "name": "منصة مقاول — التحالفات", "homepage": "https://muqawil.sa/ar/consortium/landing",
-     "kind": "manual", "rights": "unknown", "trust": "review_all", "notes": "قناة شراكات؛ ليست دليلًا على فرصة باطن بعينها."},
-]
+# Registry of real channels = the reviewers' inbox + every `channel: true` entry of hub/data/sources_directory.json
+# (link-only, manual). rights other than verified_public_reuse / licensed_private are never fetched automatically.
+MANUAL_REVIEW = {"key": "manual-review", "name": "إدخال المراجعين (مصادر موثقة يدويًا)", "homepage": "",
+                 "kind": "manual", "rights": "link_only", "trust": "review_all",
+                 "notes": "كل سجل يُدخله مراجع مع رابط المصدر وتاريخ التحقق."}
+# fields the directory owns; operational columns (last_run_at, failures, enabled...) stay with the database
+DIRECTORY_FIELDS = ("name", "homepage", "kind", "rights", "rights_evidence", "rights_checked_at", "trust", "notes")
+
+
+def source_registry() -> list[dict]:
+    return [MANUAL_REVIEW, *directory.channel_registry()]
+
+
+SOURCE_REGISTRY = source_registry()
 
 
 def sync_catalog(db: Session) -> int:
@@ -53,12 +52,25 @@ def sync_catalog(db: Session) -> int:
 
 
 def sync_sources(db: Session) -> int:
-    for s in SOURCE_REGISTRY:
+    """The registry is the source of truth for descriptive fields; rows it no longer lists are disabled, never deleted
+    (their opportunities and fetch history stay)."""
+    registry = source_registry()
+    keys = {s["key"] for s in registry}
+    for s in registry:
         row = db.scalar(select(Source).where(Source.key == s["key"]))
         if row is None:
             db.add(Source(**s))
+            continue
+        for f in DIRECTORY_FIELDS:
+            if f in s:
+                setattr(row, f, s[f])
+        if not row.enabled:
+            row.enabled = True
+    for row in db.scalars(select(Source).where(Source.kind == "manual", Source.enabled.is_(True))).all():
+        if row.key not in keys:
+            row.enabled = False
     db.flush()
-    return len(SOURCE_REGISTRY)
+    return len(registry)
 
 
 def seed(db: Session):

@@ -42,9 +42,10 @@ def test_unverified_rights_never_fetched(session):
 
 
 def test_seeded_official_sources_are_link_only(session):
-    for key in ("etimad", "muqawil-market", "muqawil-consortium"):
+    for key in ("etimad", "sca-muqawil", "saudi-exchange", "rcrc-riyadh"):
         s = session.scalar(select(radar.Source).where(radar.Source.key == key))
-        assert s.rights == "unknown" and s.kind == "manual"
+        assert s.rights in ("unknown", "link_only", "restricted") and s.kind == "manual"
+        assert s.rights_evidence and s.rights_checked_at, "every channel carries dated rights evidence"
         assert radar.fetch_source(s).outcome == "skipped"
 
 
