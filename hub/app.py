@@ -24,6 +24,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from . import jobs, mailer, oidc, quotes, radar, store, totp
 from .config import settings
 from .db import get_db, init_db, utcnow
+from .directory import count as directory_count
+from .directory import page_context as directory_page
 from .models import (
     CITIES,
     OPPORTUNITY_TYPES,
@@ -202,7 +204,7 @@ def home(request: Request, db: Session = Depends(get_db), user=Depends(current_u
     stats = {
         "opps": db.scalar(select(func.count()).select_from(public_opps_query().subquery())),
         "products": db.scalar(select(func.count(Product.id)).where(Product.status == "ready")),
-        "sources": db.scalar(select(func.count(Source.id))),
+        "sources": directory_count(),
     }
     products = db.scalars(select(Product).where(Product.status == "ready").limit(4)).all()
     return render(request, "home.html", db, user, latest=latest, stats=stats, products=products)
@@ -283,10 +285,12 @@ def radar_report(opp_id: int, request: Request, category: str = Form(...), detai
 
 
 @app.get("/sources", response_class=HTMLResponse)
-def sources_public(request: Request, db: Session = Depends(get_db), user=Depends(current_user_optional)):
+def sources_public(request: Request, city: str = "all", cat: str = "", db: Session = Depends(get_db),
+                   user=Depends(current_user_optional)):
     now = utcnow()
-    rows = [(s, radar.source_health(s, now)) for s in db.scalars(select(Source).order_by(Source.id)).all()]
-    return render(request, "sources.html", db, user, rows=rows, job_runs=jobs.last_job_runs(db))
+    rows = [(s, radar.source_health(s, now))
+            for s in db.scalars(select(Source).where(Source.enabled.is_(True)).order_by(Source.id)).all()]
+    return render(request, "sources.html", db, user, rows=rows, job_runs=jobs.last_job_runs(db), **directory_page(city, cat))
 
 
 @app.get("/store", response_class=HTMLResponse)

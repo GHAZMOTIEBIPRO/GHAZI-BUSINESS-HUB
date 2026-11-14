@@ -1,23 +1,59 @@
 {% extends "base.html" %}
-{% block title %}المصادر ومنهجية التحقق — غازي للأعمال{% endblock %}
+{% block title %}دليل مصادر فرص المقاولات — غازي للأعمال{% endblock %}
+{% block description %}دليل موثق لمصادر فرص المقاولات وبيانات سوق البناء في السعودية: المنافسات الحكومية، بوابات الموردين في ينبع والرياض وجدة، إعلانات الترسية، ومؤشرات التكاليف — مع حقوق استخدام كل مصدر ودليلها.{% endblock %}
 {% block content %}
 <div class="wrap">
-  <div class="page-head"><h1>المصادر ومنهجية التحقق</h1>
-    <p class="muted">نعرض هنا كل مصدر مسجل، وحقوق استخدامه، وحالته الآن. لا نجلب آليًا من أي موقع إلا بعد توثيق إذن إعادة الاستخدام واحترام robots.txt.</p></div>
+  <div class="page-head"><h1>دليل مصادر الفرص والبيانات</h1>
+    <p class="muted">مرجع واحد للمقاول: أين تُطرح المنافسات، وأين تسجّل كمورّد، ومن أين تعرف المقاول الرئيسي الذي رست عليه المشاريع، وأي بيانات سوق يحق لك إعادة استخدامها. كل مصدر يحمل حالة حقوقه ودليلها وتاريخ التحقق؛ لا نجلب آليًا من أي موقع إلا بعد توثيق إذن إعادة الاستخدام واحترام robots.txt.</p></div>
+
+  <nav class="chips" aria-label="تصفية حسب المدينة" id="cityChips">
+    {% for c in ["all"] + focus_cities %}<a class="chip {{ 'on' if city==c else '' }}" href="/sources?city={{ c }}{% if cat %}&amp;cat={{ cat }}{% endif %}" {% if city==c %}aria-current="page"{% endif %}>{{ 'كل المملكة' if c=='all' else c }} <span class="num">{{ counts[c] }}</span></a>{% endfor %}
+  </nav>
+  <nav class="chips small" aria-label="تصفية حسب النوع" id="catChips">
+    <a class="chip {{ 'on' if not cat else '' }}" href="/sources?city={{ city }}">كل الأنواع</a>
+    {% for k, label in categories.items() %}<a class="chip {{ 'on' if cat==k else '' }}" href="/sources?city={{ city }}&amp;cat={{ k }}">{{ label }}</a>{% endfor %}
+  </nav>
+
+  <p class="muted small" id="dirCount"><span class="num">{{ entries|length }}</span> من {{ total }} مصدرًا{% if city!='all' %} — {{ city }}{% endif %}{% if cat %} — {{ categories[cat] }}{% endif %}</p>
+  <div class="grid g2" id="directory">
+  {% for s in entries %}
+    <article class="card src" id="src-{{ s.key }}">
+      <div class="opp-top"><h3><a href="{{ s.homepage }}" rel="noopener noreferrer nofollow" target="_blank">{{ s.name }}</a></h3>
+        <span class="badge {{ RIGHTS_BADGE[s.rights] }}">{{ SOURCE_RIGHTS[s.rights] }}</span></div>
+      <div class="opp-meta"><span>{{ s.owner }}</span><span>{{ categories[s.category] }}</span>
+        <span>{% for c in s.cities %}{{ 'كل المملكة' if c=='all' else c }}{% if not loop.last %}، {% endif %}{% endfor %}</span></div>
+      <p><strong>ماذا تجد:</strong> {{ s.what }}</p>
+      <p><strong>كيف تستفيد:</strong> {{ s.how_to_use }}</p>
+      <details class="evidence"><summary>حقوق إعادة الاستخدام — <span class="badge {{ 'b-ok' if s.evidence_status=='verified_text' else ('b-warn' if s.evidence_status=='secondary' else 'b-closed') }}">{{ EVIDENCE_STATUS[s.evidence_status] }}</span> <span class="muted">تحقق: <span class="num">{{ s.rights_checked_at }}</span></span></summary>
+        <p class="small">{{ s.rights_evidence }}</p>
+        <p class="small muted">{{ AUTOMATION[s.automation] }}{% if s.notes %} — {{ s.notes }}{% endif %} · <a href="{{ s.terms_url }}" rel="noopener noreferrer nofollow" target="_blank">صفحة الشروط</a></p>
+      </details>
+    </article>
+  {% else %}
+    <div class="card"><p class="muted">لا مصادر مطابقة لهذا الفلتر.</p></div>
+  {% endfor %}
+  </div>
+  <p class="small muted mt">كيف نقرأ الحالات: <span class="badge b-ok">إعادة استخدام عامة موثقة</span> قرأنا نص الإذن ونذكر المصدر عند كل استخدام · <span class="badge b-lead">الإشارة بالرابط فقط</span> نوجّهك إلى المصدر ولا ننسخ محتواه · <span class="badge b-bad">مقيّد</span> شروط المصدر تمنع النسخ أو الاستخدام التجاري · <span class="badge b-warn">غير متحقق</span> لم نقرأ الشروط بعد.</p>
+
+  <h2 class="mt">منهجية التحقق</h2>
   <div class="grid g3 mb">
     <div class="card"><h3>1. الحقوق أولًا</h3><p class="muted small">المصدر غير الموثق حقوقه يُعرض «بالرابط فقط» ويُدخل منه يدويًا بعد التحقق، دون نسخ محتواه.</p></div>
     <div class="card"><h3>2. مراجعة بشرية</h3><p class="muted small">كل سجل جديد أو متغير جوهريًا يمر بمراجع. «طلب باطن مؤكد» يتطلب دليلًا مباشرًا.</p></div>
     <div class="card"><h3>3. صلاحية التحقق</h3><p class="muted small">لكل سجل مهلة إعادة تحقق؛ عند تجاوزها يُخفى من النتائج الحديثة حتى يُعاد التأكد منه.</p></div>
   </div>
-  <div class="table-wrap stack"><table>
-    <thead><tr><th>المصدر</th><th>الحالة</th><th>حقوق الاستخدام</th><th>آخر تحديث ناجح</th><th>ملاحظات</th></tr></thead>
+
+  <h2>حالة القنوات المسجلة</h2>
+  <p class="muted small">القنوات التي يُدخل منها المراجعون الفرص، وحالة الجلب لكل منها. «يدوي» يعني أن الإدخال بشري مع رابط المصدر وتاريخ التحقق.</p>
+  <div class="table-wrap stack"><table id="channelsTable">
+    <thead><tr><th>المصدر</th><th>الحالة</th><th>حقوق الاستخدام</th><th>آخر تحقق من الحقوق</th><th>آخر تحديث ناجح</th></tr></thead>
     <tbody>{% for s, h in rows %}<tr>
       <td data-label="المصدر">{% if s.homepage.startswith('https://') %}<a href="{{ s.homepage }}" rel="noopener noreferrer nofollow" target="_blank">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
       <td data-label="الحالة"><span class="badge {{ 'b-ok' if h=='ok' else ('b-bad' if h in ('down','late','never_succeeded') else 'b-lead') }}">{{ HEALTH_LABELS[h] }}</span></td>
       <td data-label="حقوق الاستخدام">{{ SOURCE_RIGHTS[s.rights] }}</td>
-      <td data-label="آخر تحديث ناجح" class="num">{{ ksa(s.last_success_at, '%Y-%m-%d %H:%M') }}</td>
-      <td data-label="ملاحظات" class="small">{{ s.notes }}</td></tr>{% endfor %}</tbody>
+      <td data-label="آخر تحقق من الحقوق" class="num">{{ ksa(s.rights_checked_at) }}</td>
+      <td data-label="آخر تحديث ناجح" class="num">{{ ksa(s.last_success_at, '%Y-%m-%d %H:%M') }}</td></tr>{% endfor %}</tbody>
   </table></div>
+
   <h2 class="mt">التحديث الآلي</h2>
   <p class="muted small">مهمة مجدولة تغلق الفرص المنتهية، وتُخفي ما تجاوز موعد إعادة التحقق، وترسل التنبيهات المطابقة دون تكرار، وتنبّه المراجع عند تعطل مصدر.</p>
   {% set trigger_labels = {'token': 'تشغيل محمي بالرمز', 'cli': 'سطر الأوامر'} %}
@@ -31,6 +67,6 @@
       <td data-label="تحتاج إعادة تحقق" class="num">{{ r.summary.get('stale', 0) }}</td>
       <td data-label="تنبيهات أُرسلت" class="num">{{ r.summary.get('user_alerts', 0) }}</td></tr>{% endfor %}</tbody>
   </table></div>{% else %}<p class="small muted" id="jobRuns">لم يُسجَّل أي تشغيل آلي بعد.</p>{% endif %}
-  <p class="small muted mt">هل تملك جهة أو منصة ترغب في نشر فرص الباطن لديها عبرنا؟ يسعدنا ربط خلاصة رسمية باتفاقية واضحة.</p>
+  <p class="small muted mt">هل تملك جهة أو منصة ترغب في نشر فرص الباطن لديها عبرنا؟ يسعدنا ربط خلاصة رسمية باتفاقية واضحة. وإن وجدت خطأ في حالة مصدر، أبلغنا من صفحة الفرصة أو عبر «عن المنصة».</p>
 </div>
 {% endblock %}

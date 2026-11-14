@@ -1,27 +1,40 @@
-# Log-only: can a GitHub runner reach the national open data portal, and which tender/contract datasets
-# (with which licence) does it list? Nothing is stored or published by this workflow.
+# Log-only: which official sources answer from a GitHub runner, what their robots.txt allows, and whether the
+# national open data portal lists tender/contract datasets. Nothing is stored or published by this workflow;
+# a reviewer uses the log to update rights_checked_at / rights_evidence in hub/data/sources_directory.json.
 name: sources-probe
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "23 4 * * 1"     # weekly, Monday 07:23 Riyadh
   push:
-    branches: [staging-launch]
-    paths: [scripts/probe_open_data.py, .github/workflows/sources-probe.yml]
+    branches: [main, staging-launch]
+    paths: [scripts/probe_sources.py, scripts/probe_open_data.py, hub/data/sources_directory.json, .github/workflows/sources-probe.yml]
 permissions:
   contents: read
 jobs:
   probe:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install httpx==0.28.1
-      - run: python scripts/probe_open_data.py | tee probe.txt
+      - name: Directory hosts (robots + terms page reachability)
+        run: python scripts/probe_sources.py --json probe-sources.json | tee probe-sources.txt
+      - name: National open data portal (CKAN search)
+        run: python scripts/probe_open_data.py | tee probe-open-data.txt
+      - name: Summary
+        if: always()
+        run: |
+          { echo '### Source probe'; echo '```'; cat probe-sources.txt; echo; tail -3 probe-open-data.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: open-data-probe
-          path: probe.txt
-          retention-days: 30
+          name: sources-probe
+          path: |
+            probe-sources.txt
+            probe-sources.json
+            probe-open-data.txt
+          retention-days: 90
