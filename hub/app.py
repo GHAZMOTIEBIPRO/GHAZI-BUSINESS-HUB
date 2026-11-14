@@ -21,9 +21,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import directory, jobs, mailer, oidc, quotes, radar, store, totp
+from . import jobs, mailer, oidc, quotes, radar, store, totp
 from .config import settings
 from .db import get_db, init_db, utcnow
+from .directory import count as directory_count
+from .directory import page_context as directory_page
 from .models import (
     CITIES,
     OPPORTUNITY_TYPES,
@@ -202,7 +204,7 @@ def home(request: Request, db: Session = Depends(get_db), user=Depends(current_u
     stats = {
         "opps": db.scalar(select(func.count()).select_from(public_opps_query().subquery())),
         "products": db.scalar(select(func.count(Product.id)).where(Product.status == "ready")),
-        "sources": len(directory.sources()),
+        "sources": directory_count(),
     }
     products = db.scalars(select(Product).where(Product.status == "ready").limit(4)).all()
     return render(request, "home.html", db, user, latest=latest, stats=stats, products=products)
@@ -286,16 +288,9 @@ def radar_report(opp_id: int, request: Request, category: str = Form(...), detai
 def sources_public(request: Request, city: str = "all", cat: str = "", db: Session = Depends(get_db),
                    user=Depends(current_user_optional)):
     now = utcnow()
-    city = city if city in directory.FOCUS_CITIES else "all"  # anything else = no city filter
-    cat = cat if cat in directory.categories() else ""
     rows = [(s, radar.source_health(s, now))
             for s in db.scalars(select(Source).where(Source.enabled.is_(True)).order_by(Source.id)).all()]
-    entries = directory.sources(city, cat or None)
-    counts = {c: len(directory.sources(c)) for c in ["all", *directory.FOCUS_CITIES]}
-    return render(request, "sources.html", db, user, rows=rows, job_runs=jobs.last_job_runs(db), entries=entries,
-                  categories=directory.categories(), city=city, cat=cat, counts=counts, focus_cities=directory.FOCUS_CITIES,
-                  EVIDENCE_STATUS=directory.EVIDENCE_STATUS, AUTOMATION=directory.AUTOMATION,
-                  RIGHTS_BADGE=directory.RIGHTS_BADGE, total=len(directory.sources()))
+    return render(request, "sources.html", db, user, rows=rows, job_runs=jobs.last_job_runs(db), **directory_page(city, cat))
 
 
 @app.get("/store", response_class=HTMLResponse)

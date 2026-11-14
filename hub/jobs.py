@@ -14,9 +14,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import db as dbm
-from . import directory, mailer
+from . import mailer
 from .config import ROOT, settings
 from .db import utcnow
+from .directory import channel_registry
 from .models import EmailOutbox, JobRun, Notification, Opportunity, Product, Source, User
 from .radar import HEALTH_LABELS, mark_stale_and_closed, match, run_source, source_health
 from .store import active_plan
@@ -31,7 +32,7 @@ DIRECTORY_FIELDS = ("name", "homepage", "kind", "rights", "rights_evidence", "ri
 
 
 def source_registry() -> list[dict]:
-    return [MANUAL_REVIEW, *directory.channel_registry()]
+    return [MANUAL_REVIEW, *channel_registry()]
 
 
 SOURCE_REGISTRY = source_registry()

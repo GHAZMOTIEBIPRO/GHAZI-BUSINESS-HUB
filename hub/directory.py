@@ -97,6 +97,19 @@ def categories() -> dict:
     return load()["categories"]
 
 
+def count() -> int:
+    return len(load()["sources"])
+
+
+def page_context(city: str, cat: str) -> dict:
+    """Template context for the public /sources page. Unknown filter values are dropped, never echoed."""
+    city = city if city in FOCUS_CITIES else "all"
+    cat = cat if cat in categories() else ""
+    return {"entries": sources(city, cat or None), "categories": categories(), "city": city, "cat": cat,
+            "counts": {c: len(sources(c)) for c in ["all", *FOCUS_CITIES]}, "focus_cities": FOCUS_CITIES,
+            "EVIDENCE_STATUS": EVIDENCE_STATUS, "AUTOMATION": AUTOMATION, "RIGHTS_BADGE": RIGHTS_BADGE, "total": count()}
+
+
 def by_key(key: str) -> dict | None:
     return next((s for s in load()["sources"] if s["key"] == key), None)
 
