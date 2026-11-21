@@ -18,9 +18,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install httpx==0.28.1 pypdf==5.9.0
-      - name: Official procurement sources (terms, links, reachability)
-        run: python scripts/probe_procurement_sources.py | tee procurement_probe.txt
+      - run: |
+          pip install httpx==0.28.1 pypdf==5.9.0 playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Official procurement sources (terms, links, reachability, one anonymous browser visit)
+        run: python scripts/probe_procurement_sources.py --browser | tee procurement_probe.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
