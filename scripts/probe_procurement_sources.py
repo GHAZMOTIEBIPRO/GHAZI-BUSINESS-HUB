@@ -135,7 +135,58 @@ def browser_visit(url: str) -> None:
         b.close()
 
 
+CARD = re.compile(r"(Statistics|Contracts|Finance|Tenders|Budget) \d/5 \d+ Rate (.+?) Group Identifier:(\d+)\|"
+                  r"Creation Date:([\d-]+)")
+
+
+def list_library(url: str = "https://portal.etimad.sa/en-us/ecollaboration/indexopendatarequest", max_pages: int = 12):
+    """Page through the public open data library as a visitor and print every Tenders / Contracts dataset with its link.
+
+    Reading a public listing only: no form, no login, no download. Each card's "Navigate" link is paired by order.
+    """
+    from playwright.sync_api import sync_playwright
+    seen: dict[str, tuple] = {}
+    with sync_playwright() as p:
+        b = p.chromium.launch()
+        page = b.new_context(locale="en-US", user_agent=UA).new_page()
+        page.goto(url, wait_until="domcontentloaded", timeout=90000)
+        page.wait_for_timeout(8000)
+        for number in range(1, max_pages + 1):
+            if number > 1:
+                target = page.locator(f"a:text-is('{number}'), button:text-is('{number}'), li:text-is('{number}')").first
+                if target.count() == 0:
+                    nxt = page.locator("a:text-is('...'), a[aria-label*=Next], a:text-is('>'), a:text-is('»')").first
+                    if nxt.count() == 0:
+                        break
+                    nxt.click()
+                else:
+                    target.click()
+                page.wait_for_timeout(5000)
+            text = re.sub(r"\s+", " ", page.inner_text("body"))
+            hrefs = page.eval_on_selector_all("a", "els => els.filter(e => /datasets\\/view/.test(e.href)).map(e => e.href)")
+            cards = CARD.findall(text)
+            print(f"   [library] page {number}: {len(cards)} cards, {len(hrefs)} dataset links")
+            new = 0
+            for (category, body, gid, created), href in zip(cards, hrefs + [""] * len(cards), strict=False):
+                if gid not in seen:
+                    seen[gid] = (category, body[:300], created, href)
+                    new += 1
+            if new == 0 and number > 1:
+                break
+        b.close()
+    wanted = [(gid, v) for gid, v in seen.items() if v[0] in ("Tenders", "Contracts")]
+    print(f"\n== open data library: {len(seen)} datasets read, {len(wanted)} Tenders/Contracts")
+    for gid, (category, body, created, href) in sorted(wanted, key=lambda kv: kv[1][0]):
+        print(f"   [{category}] {body} | id={gid} created={created} | {href}")
+
+
 def main() -> int:
+    if "--library" in sys.argv:
+        try:
+            list_library()
+        except Exception as e:
+            print(f"   [library] error: {type(e).__name__}: {str(e)[:300]}")
+        return 0
     use_browser = "--browser" in sys.argv
     with httpx.Client(timeout=30, headers={"User-Agent": UA, "Accept-Language": "ar,en"}, follow_redirects=True) as c:
         for label, url, kind in PAGES:
