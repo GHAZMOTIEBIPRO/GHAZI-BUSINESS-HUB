@@ -75,7 +75,8 @@ def read_only(base: str, health: dict) -> None:
                          ("/sources", "المصادر"), ("/calculator", ""), ("/login", "دخول"), ("/register", "حساب")]:
         r = c.get(path)
         check(f"page {path} opens", r.status_code == 200 and marker in r.text, f"status={r.status_code}")
-    r = c.get("/")
+    # A fresh anonymous client must receive the cookie; an existing session need not reissue Set-Cookie.
+    r = httpx.get(base + "/", timeout=60, follow_redirects=False)
     h = {k.lower(): v for k, v in r.headers.items()}
     check("security headers (CSP, HSTS or https-only cookies, nosniff, frame deny)",
           "content-security-policy" in h and h.get("x-content-type-options") == "nosniff" and "x-frame-options" in h,
