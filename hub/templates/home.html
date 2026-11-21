@@ -24,6 +24,20 @@
 </section>
 
 <section class="section"><div class="wrap">
+ <div class="card" style="background:linear-gradient(120deg,#071c32,#153958);color:#fff;border-color:#25506d;padding:1.5rem">
+  <div class="row-between"><div><p class="intel-kicker">GHAZI INTELLIGENCE</p><h2>ابحث عن مناقصة أو سجل مشاريع أي مقاول</h2>
+  <p style="color:#dfebf6">الاسم التجاري، رقم السجل، مرجع المنافسة؛ مع التمييز بين المتقدم والفائز والمشروع المنفذ.</p></div>
+  <a class="btn btn-primary" href="/intelligence">استكشف ذكاء الشركات</a></div>
+  <form action="/intelligence" method="get" class="intel-searchbar" role="search">
+    <select name="kind" aria-label="نوع البحث"><option value="tender">منافسة</option><option value="company">شركة أو مؤسسة</option></select>
+    <input type="search" name="q" required maxlength="120" placeholder="مثال: 260439001976 أو اسم المقاول" aria-label="رقم المناقصة أو اسم الشركة">
+    <button type="submit" class="btn btn-primary">بحث</button>
+  </form>
+  <p class="small" style="color:#b9ccdf;margin-top:.75rem">النتائج الخارجية استعلامات مؤقتة من مصدر مستقل، والأرشيف المحلي لا يعرض إلا السجلات المصرح بنشرها.</p>
+ </div>
+</div></section>
+
+<section class="section"><div class="wrap">
   <div class="grid g3">
     <div class="card"><div class="muted small">فرص معتمدة الآن</div><div class="stat num">{{ stats.opps }}</div><p class="small muted">كل واحدة لها مصدر وتاريخ تحقق.</p></div>
     <div class="card"><div class="muted small">أدوات جاهزة ومختبرة</div><div class="stat num">{{ stats.products }}</div><p class="small muted">ملفات Excel مختبرة المعادلات قبل البيع.</p></div>
