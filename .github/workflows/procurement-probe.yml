@@ -8,7 +8,7 @@ on:
     - cron: "41 5 * * 0"     # weekly, Sunday 08:41 Riyadh: flags new Etimad open datasets (runs from the default branch)
   push:
     branches: [claude/tender-archive]
-    paths: [scripts/probe_procurement_sources.py, .github/workflows/procurement-probe.yml]
+    paths: [scripts/probe_procurement_sources.py, scripts/probe_sites_and_archive.py, .github/workflows/procurement-probe.yml]
 permissions:
   contents: read
 jobs:
@@ -25,6 +25,8 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Official procurement sources (terms, links, reachability, one anonymous browser visit)
         run: python scripts/probe_procurement_sources.py --library | tee procurement_probe.txt
+      - name: Government and project platforms; public archive copies of open data files (log only)
+        run: python scripts/probe_sites_and_archive.py --sites --archive | tee -a procurement_probe.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
