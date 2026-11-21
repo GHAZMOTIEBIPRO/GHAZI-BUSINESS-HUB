@@ -57,6 +57,23 @@ def main():
         except ValueError:
             print("tender_response_shape", json.dumps({"content_length": len(first_text),
                 "excerpt": first_text[:180].replace("\\n", " ")}, ensure_ascii=False))
+        for tool, args in [("search_tenders", {"query": "صيانة الطرق", "limit": 2}),
+                           ("company_summary", {"name_or_id": "شركة المباني مقاولون عامون"})]:
+            resp = c.post(URL, headers=h, json={"jsonrpc": "2.0", "id": 4, "method": "tools/call",
+                                               "params": {"name": tool, "arguments": args}})
+            payload = parse(resp)
+            blocks = payload.get("result", {}).get("content", [])
+            txt = next((b.get("text", "") for b in blocks if b.get("type") == "text"), "")
+            try:
+                val = json.loads(txt)
+                print("shape", tool, json.dumps({"type": type(val).__name__,
+                    "keys": list(val)[:60] if isinstance(val, dict) else [],
+                    "items": len(val) if isinstance(val, list) else None,
+                    "subfields": {k: {"type": type(v).__name__, "items": len(v) if isinstance(v, list) else None}
+                                  for k,v in val.items()} if isinstance(val, dict) else {}}, ensure_ascii=False))
+            except ValueError:
+                print("shape", tool, "not_json", len(txt))
+
 
 
 
