@@ -71,13 +71,13 @@
         {% if remote.url %}<a class="btn btn-outline" href="{{ remote.url }}" rel="noopener noreferrer nofollow" target="_blank">عرض بيانات Daall</a>{% endif %}
       </div>
     </section>
-    {% elif remote and remote.items is defined %}
+    {% elif remote and remote['items'] is defined %}
     <section class="intel-panel">
       <div class="intel-panel-title"><h3>المناقصات المطابقة في البحث اللحظي</h3>
         <span class="intel-origin">Daall · {{ remote.total if remote.total is not none else 'عدد غير معلوم' }} نتيجة بالمصدر</span>
       </div>
       <div class="intel-results">
-      {% for t in remote.items %}
+      {% for t in remote['items'] %}
         <article class="intel-result">
           <div><span class="intel-id">#{{ t.reference_no or '—' }}</span><h3>{{ t.name or 'منافسة دون عنوان' }}</h3><p>{{ t.agency or 'جهة غير منشورة' }} · {{ t.city or t.region or 'الموقع غير منشور' }}</p></div>
           <div class="intel-result-side"><span class="intel-tag">{{ 'مفتوحة' if t.is_open else (t.status or 'غير معلوم') }}</span>
