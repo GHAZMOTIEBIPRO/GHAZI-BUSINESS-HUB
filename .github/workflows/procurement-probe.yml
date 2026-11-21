@@ -21,12 +21,13 @@ jobs:
         with:
           python-version: "3.12"
       - run: |
-          pip install httpx==0.28.1 openpyxl==3.1.5 playwright==1.56.0
+          pip install httpx==0.28.1 openpyxl==3.1.5 xlrd==2.0.1 playwright==1.56.0
           python -m playwright install --with-deps chromium
+      - name: Archived official procurement / contractor files (structure only, log only)
+        run: python scripts/probe_sites_and_archive.py --inspect | tee procurement_probe.txt
       - name: Etimad open data library (public listing; flags datasets missing from the catalog)
-        run: python scripts/probe_procurement_sources.py --library | tee procurement_probe.txt
-      - name: Archived open-data files about tenders, contracts and companies (structure only, log only)
-        run: python scripts/probe_sites_and_archive.py --archive-topics | tee -a procurement_probe.txt
+        if: github.event_name != 'push'
+        run: python scripts/probe_procurement_sources.py --library | tee -a procurement_probe.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

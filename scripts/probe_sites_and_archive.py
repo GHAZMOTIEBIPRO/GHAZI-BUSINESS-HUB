@@ -233,7 +233,47 @@ def describe(blob: bytes, name: str, io) -> None:
     wb.close()
 
 
+INSPECT = [  # archived official files whose structure decides whether they can feed the archive
+    ("20211204002823", "https://data.gov.sa/Data/dataset/c0ffd6e6-e12d-4394-886b-fa9092f89daa/resource/"
+                       "29e806d2-8d37-4503-b409-ce848e8a6351/download/procurement-data-2019-2020-2021.xls"),
+    ("20170425235717", "http://www.data.gov.sa:80/sites/default/files/Contractors%20data%20report.xlsx"),
+    ("20180727195621", "http://www.data.gov.sa:80/sites/default/files/CR%20Company%20Tayp.xlsx"),
+]
+
+
+def inspect_files() -> None:
+    import io
+    with httpx.Client(timeout=90, headers={"User-Agent": UA}, follow_redirects=True) as c:
+        for ts, original in INSPECT:
+            print(f"\n-- {urllib.parse.unquote(original)} (captured {ts})")
+            m = re.search(r"/dataset/([0-9a-f-]{36})", original)
+            if m:
+                dataset_page(c, m.group(1))
+            try:
+                blob = c.get(f"https://web.archive.org/web/{ts}id_/{original}").content
+            except httpx.HTTPError as e:
+                print(f"   unreachable {type(e).__name__}")
+                continue
+            if original.lower().endswith(".xls"):
+                import xlrd
+                book = xlrd.open_workbook(file_contents=blob)
+                for sh in book.sheets()[:3]:
+                    header_row = next((r for r in range(min(sh.nrows, 10))
+                                       if sum(str(v).strip() != "" for v in sh.row_values(r)) >= 2), 0)
+                    header = [str(v)[:40] for v in sh.row_values(header_row) if str(v).strip()] if sh.nrows else []
+                    print(f"   sheet '{sh.name}': rows={max(sh.nrows - header_row - 1, 0)} header={header}")
+                    kinds = {}
+                    for r in range(header_row + 1, min(sh.nrows, header_row + 200)):
+                        for i, v in enumerate(sh.row_values(r)[:len(header)]):
+                            kinds.setdefault(header[i] if i < len(header) else i, set()).add(type(v).__name__)
+                    print(f"   value types (first 200 rows): { {k: sorted(v) for k, v in kinds.items()} }")
+            else:
+                describe(blob, original, io)
+
+
 def main() -> int:
+    if "--inspect" in sys.argv:
+        inspect_files()
     if "--sites" in sys.argv:
         sites()
     if "--archive" in sys.argv:
