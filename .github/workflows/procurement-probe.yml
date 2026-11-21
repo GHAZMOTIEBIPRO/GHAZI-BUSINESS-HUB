@@ -20,13 +20,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: |
-          pip install httpx==0.28.1 pypdf==5.9.0 playwright==1.56.0
-          python -m playwright install --with-deps chromium
-      - name: Official procurement sources (terms, links, reachability, one anonymous browser visit)
-        run: python scripts/probe_procurement_sources.py --library | tee procurement_probe.txt
-      - name: Government and project platforms; public archive copies of open data files (log only)
-        run: python scripts/probe_sites_and_archive.py --sites --archive | tee -a procurement_probe.txt
+      - run: pip install httpx==0.28.1 openpyxl==3.1.5
+      - name: Archived open-data files about tenders, contracts and companies (structure only, log only)
+        run: python scripts/probe_sites_and_archive.py --archive-topics | tee procurement_probe.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

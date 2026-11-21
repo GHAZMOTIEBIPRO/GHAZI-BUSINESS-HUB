@@ -147,11 +147,99 @@ def archive() -> None:
                                          ensure_ascii=False))
 
 
+TOPIC = r"(?i).*(tender|contract|competition|procure|purchas|monafs|munafas|cr-number|compan|establishment|contractor|" \
+        r"supplier|vendor|award|project|%D9%85%D9%86%D8%A7%D9%81%D8%B3).*"
+
+
+def archive_topics(max_files: int = 14) -> None:
+    """Archived open-data files about tenders / contracts / companies: dataset page facts, columns and row counts.
+
+    Reads public archive copies in memory to describe their structure. Prints column names and counts only — never
+    the rows — so nothing from the files is republished by this log.
+    """
+    import io
+    with httpx.Client(timeout=90, headers={"User-Agent": UA}, follow_redirects=True) as c:
+        params = {"url": "data.gov.sa", "matchType": "domain", "output": "json", "collapse": "urlkey", "limit": "3000",
+                  "fl": "original,timestamp,mimetype,statuscode,length", "filter": ["statuscode:200", f"original:{TOPIC}"]}
+        r = c.get("https://web.archive.org/cdx/search/cdx", params=params)
+        rows = r.json()[1:] if r.status_code == 200 and r.text.strip() else []
+        files = [x for x in rows if re.search(r"\.(xlsx|xls|csv)(\?|$)", x[0], re.I)]
+        pages = {x[0] for x in rows if "/dataset/" in x[0] and "/resource/" not in x[0]}
+        print(f"\n== archive topic search (data.gov.sa and subdomains): {len(rows)} captures, {len(files)} data files, "
+              f"{len(pages)} dataset pages")
+        for x in files[:80]:
+            print("   file: " + json.dumps(dict(zip(["url", "captured", "type", "status", "bytes"], x, strict=False)),
+                                         ensure_ascii=False))
+        for original, ts, *_ in files[:max_files]:
+            print(f"\n-- {urllib.parse.unquote(original)} (captured {ts})")
+            m = re.search(r"/dataset/([0-9a-f-]{36})", original)
+            if m:
+                dataset_page(c, m.group(1))
+            try:
+                blob = c.get(f"https://web.archive.org/web/{ts}id_/{original}").content
+            except httpx.HTTPError as e:
+                print(f"   file: unreachable {type(e).__name__}")
+                continue
+            describe(blob, original, io)
+
+
+def dataset_page(c: httpx.Client, dataset_id: str) -> None:
+    params = {"url": f"data.gov.sa/Data/*/dataset/{dataset_id}", "output": "json", "limit": "5",
+              "filter": ["statuscode:200", "mimetype:text/html"], "fl": "original,timestamp"}
+    try:
+        r = c.get("https://web.archive.org/cdx/search/cdx", params=params)
+        hits = r.json()[1:] if r.status_code == 200 and r.text.strip() else []
+        if not hits:
+            print("   dataset page: not archived")
+            return
+        original, ts = hits[0]
+        page = c.get(f"https://web.archive.org/web/{ts}id_/{original}").text
+    except (httpx.HTTPError, ValueError) as e:
+        print(f"   dataset page: unreachable {type(e).__name__}")
+        return
+    title = re.search(r"(?is)<title[^>]*>(.*?)</title>", page)
+    org = re.search(r'(?is)class="[^"]*(?:organization|publisher)[^"]*"[^>]*>(.*?)</', page)
+    lic = re.search(r"(?is)(license|licence|رخصة|الترخيص)[^<]{0,40}</[^>]+>\s*<[^>]+>(.{0,160}?)<", page)
+    print(f"   dataset page ({ts}): title={text_of(title.group(1))[:120] if title else '-'} | "
+          f"org={text_of(org.group(1))[:80] if org else '-'} | licence={text_of(lic.group(2))[:100] if lic else '-'}")
+
+
+def describe(blob: bytes, name: str, io) -> None:
+    print(f"   bytes={len(blob)}")
+    if re.search(r"\.csv(\?|$)", name, re.I):
+        for enc in ("utf-8-sig", "cp1256"):
+            try:
+                text = blob.decode(enc)
+                break
+            except UnicodeDecodeError:
+                text = ""
+        lines = [ln for ln in text.splitlines() if ln.strip()]
+        print(f"   csv rows={max(len(lines) - 1, 0)} header={lines[0][:300] if lines else '-'}")
+        return
+    try:
+        from openpyxl import load_workbook
+        wb = load_workbook(io.BytesIO(blob), read_only=True, data_only=True)
+    except Exception as e:
+        print(f"   not a readable workbook ({type(e).__name__})")
+        return
+    for ws in wb.worksheets[:3]:
+        count, header = 0, None
+        for row in ws.iter_rows(values_only=True):
+            if header is None and sum(v not in (None, "") for v in row) >= 2:
+                header = [str(v)[:40] for v in row if v not in (None, "")]
+            elif header is not None and any(v not in (None, "") for v in row):
+                count += 1
+        print(f"   sheet '{ws.title}': rows={count} header={header}")
+    wb.close()
+
+
 def main() -> int:
     if "--sites" in sys.argv:
         sites()
     if "--archive" in sys.argv:
         archive()
+    if "--archive-topics" in sys.argv:
+        archive_topics()
     return 0
 
 
