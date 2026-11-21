@@ -1,32 +1,27 @@
-# Log-only: can a GitHub runner reach the official procurement sources (Etimad, the national open data platform,
-# the Royal Commissions), what do they publish, and under which terms? Nothing is stored or published.
+# Log-only: can a GitHub runner reach the national open data portal, and which tender/contract datasets
+# (with which licence) does it list? Nothing is stored or published by this workflow.
 name: sources-probe
 on:
   workflow_dispatch:
   push:
-    branches: [staging-launch, claude/tender-archive]
-    paths: [scripts/probe_open_data.py, scripts/probe_procurement_sources.py, .github/workflows/sources-probe.yml]
+    branches: [staging-launch]
+    paths: [scripts/probe_open_data.py, .github/workflows/sources-probe.yml]
 permissions:
   contents: read
 jobs:
   probe:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install httpx==0.28.1 pypdf==5.9.0
-      - name: Official procurement sources (terms, links, reachability)
-        run: python scripts/probe_procurement_sources.py | tee procurement_probe.txt
-      - name: National open data portal (CKAN search)
-        run: python scripts/probe_open_data.py | tee probe.txt
+      - run: pip install httpx==0.28.1
+      - run: python scripts/probe_open_data.py | tee probe.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sources-probe
-          path: |
-            probe.txt
-            procurement_probe.txt
+          name: open-data-probe
+          path: probe.txt
           retention-days: 30

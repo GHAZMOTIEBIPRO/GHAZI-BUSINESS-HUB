@@ -1,0 +1,29 @@
+# Log-only: Etimad open data library and policy, Etimad usage policy, API portal terms, the national open data
+# platform and the Royal Commission sites, as seen from a GitHub runner. Nothing is stored or published.
+# Kept apart from sources-probe.yml (PR #4) so the two branches merge in either order.
+name: procurement-probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/tender-archive]
+    paths: [scripts/probe_procurement_sources.py, .github/workflows/procurement-probe.yml]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install httpx==0.28.1 pypdf==5.9.0
+      - name: Official procurement sources (terms, links, reachability)
+        run: python scripts/probe_procurement_sources.py | tee procurement_probe.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: procurement-probe
+          path: procurement_probe.txt
+          retention-days: 30
