@@ -21,7 +21,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import jobs, mailer, oidc, quotes, radar, store, totp
+from . import intelligence, jobs, mailer, oidc, quotes, radar, store, totp
 from .archive import web as archive_web
 from .config import settings
 from .db import get_db, init_db, utcnow
@@ -947,6 +947,9 @@ def download_file(token: str, db: Session = Depends(get_db), user: User = Depend
 # ----------------------------------------------------------------- admin
 staff = require_role("admin", "reviewer")
 admin_only = require_role("admin")
+
+# Public tender/company intelligence: source-attributed and public-rights-gated.
+intelligence.register(app, render=render, get_db=get_db, current_user_optional=current_user_optional)
 
 # procurement archive (staff only; private until source licences are verified)
 archive_web.register(app, render=render, staff=staff, admin_only=admin_only, verify_csrf=verify_csrf, get_db=get_db,
