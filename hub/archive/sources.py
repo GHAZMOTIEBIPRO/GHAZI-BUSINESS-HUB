@@ -18,7 +18,9 @@ REGISTRY: list[dict] = [
          record_types="منافسات، مواعيد، ترسيات، أسماء متقدمين في بعض المنافسات", years_covered="2018–الآن (بحسب المنصة)",
          evidence_url="https://apiportal.etimad.sa/ar/api_products/TendersInquiryService",
          notes="خدمة «الاستعلام عن بيانات المنافسات» في بوابة مطوري اعتماد معروضة بعبارة «قريبًا» وتتطلب حسابًا "
-               "واشتراكًا. لا تصدير جماعي رسمي. الإجراء: طلب اشتراك/اتفاقية من المالك عند إتاحة الخدمة."),
+               "واشتراكًا. لا تصدير جماعي رسمي. 2026-11-21 (GitHub run 44862352265): tenders.etimad.sa يعرض اختبار "
+               "CAPTCHA «This question is for testing whether you are a human visitor» للعملاء الآليين، حتى بمتصفح: "
+               "لا جلب آلي ولا محاولة تجاوز. الإجراء: طلب اشتراك/اتفاقية من المالك عند إتاحة الخدمة."),
     dict(key="etimad_open_data", name="اعتماد — مكتبة البيانات المفتوحة (المركز الوطني لنظم الموارد الحكومية)",
          owner="المركز الوطني لنظم الموارد الحكومية",
          url="https://portal.etimad.sa/ar-sa/ecollaboration/indexopendatarequest", access_method="licensed_upload",
@@ -26,10 +28,12 @@ REGISTRY: list[dict] = [
          record_types="مجموعة «بيانات المنافسات» (قائمة المنافسات المطروحة، دورية شهرية) ضمن 104 مجموعات للمركز",
          rights_status="unverified",
          evidence_url="https://portal.etimad.sa/ar-SA/simplepage/simplepagedetail?PageGuid=a2b884b7-3d01-4518-90f6-a244f3977731",
-         notes="سياسة البيانات المفتوحة للمركز (قُرئت من خادم GitHub 2026-11-21): «تخضع البيانات المفتوحة لترخيص يحدد الأساس "
-               "النظامي لاستخدام البيانات المفتوحة وكذلك الشروط والالتزامات والقيود المفروضة على المستخدم» و«يدل استخدام "
-               "البيانات المفتوحة على قبول شروط الترخيص». صفحة المكتبة تمر بفحص تسجيل دخول صامت (OpenID). الإجراء: تنزيل "
-               "المالك للملف من داخل المملكة ورفعه من /admin/archive/import (XLSX/CSV)، وقراءة نص الترخيص الوطني قبل أي عرض."),
+         notes="سياسة البيانات المفتوحة للمركز (قُرئت كاملة من خادم GitHub 2026-11-21، آخر تعديل 1445-11-19 هـ): «إتاحة "
+               "البيانات المفتوحة للجميع ودون حاجة للتسجيل»، «بصيغة مقروءة آلياً»، «مجاناً»، «تخضع البيانات المفتوحة "
+               "لترخيص... يدل استخدام البيانات المفتوحة على قبول شروط الترخيص»، و«يجب الإشارة الى حقوق المركز الوطني "
+               "لنظم الموارد الحكومية في حال استخدام هذه البيانات». صفحة المكتبة تمر بفحص تسجيل دخول صامت (OpenID). "
+               "الإجراء: تنزيل المالك للملف ورفعه من /admin/archive/import (XLSX/CSV) مع إسناد المركز، وقراءة نص "
+               "الترخيص الوطني قبل أي عرض عام."),
     dict(key="etimad_contracts_plus", name="اعتماد — واجهة «Contracts Plus» (استعلام العقود)", owner="المركز الوطني لنظم الموارد الحكومية",
          url="https://apiportal.etimad.sa/en/api_products/ContractsPlus", access_method="link_only", official_api="yes",
          export_available="no", commercial_reuse="requires_agreement", requires_subscription="yes",
