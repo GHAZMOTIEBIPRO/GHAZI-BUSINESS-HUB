@@ -1,0 +1,43 @@
+name: intelligence-live-smoke
+on:
+  workflow_dispatch:
+  push:
+    branches: [qa/intelligence-live]
+    paths: [.github/workflows/intelligence-live-smoke.yml]
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check live search and source attribution (no data retained)
+        shell: bash
+        run: |
+          python - <<'PY'
+          import urllib.request, urllib.parse, time
+          base = "https://ghazi-business-hub-dd3h.onrender.com"
+          cases = [
+              ("tender", {"kind":"tender","q":"260439001976"},
+               ["الهيئة العامة للطرق", "مرجع 260439001976", "Daall"]),
+              ("company", {"kind":"company","q":"شركة المباني مقاولون عامون"},
+               ["مشاركات مرصودة", "الجهات الأكثر ارتباطًا", "Daall"]),
+          ]
+          for name, params, markers in cases:
+              url = base + "/intelligence?" + urllib.parse.urlencode(params)
+              ok = False
+              for attempt in range(3):
+                  try:
+                      with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent":"GHAZI-Live-Smoke/1.0"}), timeout=45) as r:
+                          body = r.read().decode("utf-8")
+                          missing = [s for s in markers if s not in body]
+                          print(name, "status", r.status, "bytes", len(body), "source_result", not missing,
+                                "missing_markers", missing)
+                          ok = r.status == 200 and not missing
+                          if ok: break
+                  except Exception as e:
+                      print(name, "attempt", attempt+1, "error_type", type(e).__name__)
+                  time.sleep(6)
+              if not ok:
+                  raise SystemExit(name+" lookup failed")
+          PY
