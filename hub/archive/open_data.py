@@ -25,15 +25,15 @@ from .importer import MAX_PACKAGE_BYTES, Package, PackageError
 SYNONYMS: dict[str, list[str]] = {
     "tender_reference": ["رقم المنافسة", "الرقم المرجعي", "رقم المنافسه", "الرقم المرجعي للمنافسة", "رقم العقد",
                          "رقم المناقصة", "tender number", "reference number", "tender no", "contract number", "tender id"],
-    "title": ["اسم المنافسة", "اسم المنافسه", "عنوان المنافسة", "وصف المنافسة", "اسم المشروع", "اسم العقد",
-              "موضوع العقد", "وصف العقد", "اسم المناقصة", "tender name", "tender title", "project name",
-              "contract name", "contract title", "description"],
+    "title": ["اسم المنافسة", "اسم المنافسه", "عنوان المنافسة", "اسم المشروع", "اسم العقد", "موضوع العقد",
+              "اسم المناقصة", "tender name", "tender title", "competition name", "project name", "contract name",
+              "contract title", "وصف المنافسة", "وصف العقد", "description", "tender description"],
     "issuer": ["الجهة", "اسم الجهة", "الجهة الحكومية", "الجهة الطارحة", "الجهة المالكة", "الإدارة", "الجهة المستفيدة",
-               "agency", "entity", "government entity", "department"],
+               "agency", "entity", "entity name", "government entity", "agency name", "department"],
     "city_or_location": ["المدينة", "مكان التنفيذ", "موقع التنفيذ", "المنطقة", "المحافظة", "city", "location", "region"],
     "announced_status": ["حالة المنافسة", "الحالة", "حالة العقد", "status", "tender status"],
-    "published_date": ["تاريخ النشر", "تاريخ الطرح", "تاريخ الإعلان", "تاريخ نشر المنافسة", "publish date",
-                       "published date", "announcement date"],
+    "published_date": ["تاريخ النشر", "تاريخ الطرح", "تاريخ الإعلان", "تاريخ نشر المنافسة", "تاريخ البدء",
+                       "publish date", "published date", "announcement date", "start date"],
     "submission_deadline": ["آخر موعد لتقديم العروض", "اخر موعد لتقديم العروض", "آخر موعد للتقديم",
                             "تاريخ إغلاق المنافسة", "تاريخ فتح العروض", "submission deadline", "closing date"],
     "award_date": ["تاريخ الترسية", "تاريخ توقيع العقد", "تاريخ العقد", "تاريخ بداية العقد", "award date",
@@ -43,8 +43,12 @@ SYNONYMS: dict[str, list[str]] = {
                                  "contractor", "contractor name", "awardee", "vendor", "vendor name"],
     "award_amount_sar_as_published": ["قيمة العقد", "قيمة الترسية", "مبلغ العقد", "القيمة", "قيمة العقد بالريال",
                                       "contract value", "award value", "amount", "value"],
+    # offers submitted only; "bids that passed evaluation" is a different number and stays in the source columns
+    "offer_count_claimed": ["عدد العروض", "عدد العروض المقدمة", "number of bids", "number of offers",
+                            "number of submitted bids"],
 }
-REQUIRED = ("tender_reference", "title")
+REQUIRED = ("title",)
+DERIVED_PREFIX = "OD-"  # internal key for rows the publisher released without a tender / contract number
 AWARDED_WITHOUT_STATUS = "عقد منشور بمورد مسمّى"  # status text used when a contract list has no status column
 EXCEL_EPOCH = dt.datetime(1899, 12, 30)
 
@@ -57,6 +61,8 @@ def _norm(header: str) -> str:
 
 
 NORMALISED = {field: [_norm(v) for v in variants] for field, variants in SYNONYMS.items()}
+# a header containing one of these words is never taken for the field (it is a different measure)
+EXCLUDE = {"offer_count_claimed": [_norm(w) for w in ("passed", "evaluation", "المجتازة", "اجتازت", "المقبولة", "الفائزة")]}
 
 
 def detect_mapping(headers: list[str]) -> dict[str, str]:
@@ -69,7 +75,7 @@ def detect_mapping(headers: list[str]) -> dict[str, str]:
             if field in mapping:
                 continue
             for header, nh in normed:
-                if header in used:
+                if header in used or any(w in nh for w in EXCLUDE.get(field, [])):
                     continue
                 if any(nh == v if exact else (len(v) >= 4 and v in nh) for v in variants):
                     mapping[field] = header
@@ -174,11 +180,19 @@ def to_package(path: str | Path, *, publisher: str, source_url: str = "", mappin
         named = has_winner and rec["winner_name_as_published"]
         if named and (not has_status or (contract_status and N.map_status(rec["announced_status"]) != "cancelled")):
             rec["announced_status"] = AWARDED_WITHOUT_STATUS  # a named supplier on a published contract list
-        rec["offer_count_claimed"] = ""
+        notes = [f"open data file: {path.name}"]
+        if not rec["tender_reference"] and rec["title"]:
+            # the publisher released this row without a number: a stable internal key, labelled as such everywhere
+            basis = "|".join([publisher, rec["issuer"], rec["title"], rec["published_date"]])
+            rec["tender_reference"] = DERIVED_PREFIX + hashlib.sha256(basis.encode()).hexdigest()[:12].upper()
+            notes.append("لا رقم منافسة في الملف المصدر: المرجع داخلي مشتق (OD-)")
         rec["bidders_name_count_public"] = ""
         rec["source_url"] = source_url if source_url.startswith("https://") else ""
         rec["source_publisher"] = publisher
-        rec["verification_notes"] = f"open data file: {path.name}"
+        rec["verification_notes"] = "؛ ".join(notes)
+        for header, i in index.items():  # every original column stays with the record (sector, phase, ...)
+            if header and header not in mapping.values() and i < len(row):
+                rec["src:" + header[:60]] = _cell(row[i])
         tenders.append(rec)
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     return Package(sha256=digest, manifest={"source_file": path.name, "publisher": publisher, "mapping": mapping,

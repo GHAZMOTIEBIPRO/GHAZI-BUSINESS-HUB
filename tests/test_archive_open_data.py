@@ -95,9 +95,29 @@ def test_cp1256_csv_and_reimport_is_idempotent(database, tmp_path, session):
     assert session.scalars(select(ProcurementTender.region).where(ProcurementTender.official_reference == "700001")).one() == "المدينة المنورة"
 
 
+def test_rows_without_a_number_get_a_labelled_internal_key_and_keep_their_columns(database, tmp_path, session):
+    # the shape described by the Etimad library: name, description, sector, entity, start date — no tender number
+    headers = ["Tender Name", "Tender Description", "Sector", "Entity", "Start Date", "Number of bids that passed evaluation"]
+    rows = [["صيانة مدارس اختبار", "وصف", "التعليم", "جهة اختبار", dt.datetime(2024, 5, 1), 3],
+            ["ترميم مبنى اختبار", "وصف", "البلديات", "جهة اختبار", dt.datetime(2024, 6, 1), 0]]
+    pkg = open_data.to_package(xlsx(tmp_path / "tenders2024.xlsx", headers, rows), publisher="المركز الوطني لنظم الموارد الحكومية")
+    refs = [t["tender_reference"] for t in pkg.tenders]
+    assert all(r.startswith("OD-") and len(r) == 15 for r in refs) and len(set(refs)) == 2
+    again = open_data.to_package(tmp_path / "tenders2024.xlsx", publisher="المركز الوطني لنظم الموارد الحكومية")
+    assert [t["tender_reference"] for t in again.tenders] == refs  # stable across re-imports
+    first = pkg.tenders[0]
+    assert first["offer_count_claimed"] == ""  # "passed evaluation" is not the number of offers submitted
+    assert first["src:Sector"] == "التعليم" and first["src:Number of bids that passed evaluation"] == "3"
+    assert "مشتق" in first["verification_notes"]
+    Importer(dbm.SessionLocal, source_key="etimad_open_data", today=TODAY).stage(pkg)
+    t = session.scalars(select(ProcurementTender).where(ProcurementTender.official_reference == refs[0])).one()
+    assert t.raw["src:Sector"] == "التعليم" and t.published_date == dt.date(2024, 5, 1) and t.issuer.name == "جهة اختبار"
+    assert "المدارس" in t.title or "مدارس" in t.title
+
+
 def test_unrecognised_headers_are_refused_with_what_was_found(tmp_path):
     path = xlsx(tmp_path / "x.xlsx", ["العمود الأول", "العمود الثاني"], [["a", "b"]])
-    with pytest.raises(PackageError, match="tender_reference.*العمود الأول"):
+    with pytest.raises(PackageError, match="title.*العمود الأول"):
         open_data.to_package(path, publisher="x")
     (tmp_path / "x.pdf").write_bytes(b"%PDF-1.4")
     with pytest.raises(PackageError, match="XLSX أو CSV"):
