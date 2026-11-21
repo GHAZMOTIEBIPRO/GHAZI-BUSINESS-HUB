@@ -19,7 +19,31 @@ REGISTRY: list[dict] = [
          evidence_url="https://apiportal.etimad.sa/ar/api_products/TendersInquiryService",
          notes="خدمة «الاستعلام عن بيانات المنافسات» في بوابة مطوري اعتماد معروضة بعبارة «قريبًا» وتتطلب حسابًا "
                "واشتراكًا. لا تصدير جماعي رسمي. الإجراء: طلب اشتراك/اتفاقية من المالك عند إتاحة الخدمة."),
-    dict(key="saudi_open_data", name="المنصة الوطنية للبيانات المفتوحة", owner="هيئة البيانات والذكاء الاصطناعي (سدايا)",
+    dict(key="etimad_open_data", name="اعتماد — مكتبة البيانات المفتوحة (المركز الوطني لنظم الموارد الحكومية)",
+         owner="المركز الوطني لنظم الموارد الحكومية",
+         url="https://portal.etimad.sa/ar-sa/ecollaboration/indexopendatarequest", access_method="licensed_upload",
+         official_api="no", export_available="yes", commercial_reuse="unknown", requires_subscription="no",
+         record_types="مجموعة «بيانات المنافسات» (قائمة المنافسات المطروحة، دورية شهرية) ضمن 104 مجموعات للمركز",
+         rights_status="unverified",
+         evidence_url="https://portal.etimad.sa/ar-SA/simplepage/simplepagedetail?PageGuid=a2b884b7-3d01-4518-90f6-a244f3977731",
+         notes="سياسة البيانات المفتوحة للمركز (قُرئت من خادم GitHub 2026-11-21): «تخضع البيانات المفتوحة لترخيص يحدد الأساس "
+               "النظامي لاستخدام البيانات المفتوحة وكذلك الشروط والالتزامات والقيود المفروضة على المستخدم» و«يدل استخدام "
+               "البيانات المفتوحة على قبول شروط الترخيص». صفحة المكتبة تمر بفحص تسجيل دخول صامت (OpenID). الإجراء: تنزيل "
+               "المالك للملف من داخل المملكة ورفعه من /admin/archive/import (XLSX/CSV)، وقراءة نص الترخيص الوطني قبل أي عرض."),
+    dict(key="etimad_contracts_plus", name="اعتماد — واجهة «Contracts Plus» (استعلام العقود)", owner="المركز الوطني لنظم الموارد الحكومية",
+         url="https://apiportal.etimad.sa/en/api_products/ContractsPlus", access_method="link_only", official_api="yes",
+         export_available="no", commercial_reuse="requires_agreement", requires_subscription="yes",
+         record_types="عقود مورد محدد برقم سجله التجاري (حالية وسابقة)",
+         evidence_url="https://apiportal.etimad.sa/ar/terms-and-conditions",
+         notes="مدفوعة لكل استعلام (45 ر.س لكل عقد حتى 10 عقود شهريًا، تنخفض إلى 20 فوق 1000، بحسب صفحة المنتج). "
+               "الشروط: «لا يجوز ... إعادة بيع الخدمات المقدمة أو مشاركتها مع أطراف أخرى دون الحصول على موافقة خطية مسبقة». "
+               "لا تصلح لبناء أرشيف عام؛ ممكنة مستقبلًا للتحقق من عقود شركة بعينها بموافقة المالك وخطة مدفوعة."),
+    dict(key="github_etimad_sample", name="GitHub: dahabaaly/saudi-government-contracts-dataset", owner="طرف ثالث (تسويقي)",
+         url="https://github.com/dahabaaly/saudi-government-contracts-dataset", access_method="link_only",
+         commercial_reuse="unknown", record_types="253 ترسية مصنفة بلا أسماء فائزين ولا متقدمين",
+         notes="عينة تسويقية جُمعت من اعتماد ووُسمت MIT من طرف لا يملك البيانات؛ الوسم لا يمنح حق إعادة الاستخدام. "
+               "لا أسماء فائزين، فلا تضيف للأرشيف. لم تُستورد."),
+    dict(key="saudi_open_data",name="المنصة الوطنية للبيانات المفتوحة", owner="هيئة البيانات والذكاء الاصطناعي (سدايا)",
          url="https://od.data.gov.sa/", access_method="licensed_upload", official_api="unknown", export_available="yes",
          commercial_reuse="unknown", requires_subscription="no",
          record_types="مجموعات بيانات منشورة من الجهات (منها: منافسات وعقود وزارة الصحة 2020–2023، XLSX)",

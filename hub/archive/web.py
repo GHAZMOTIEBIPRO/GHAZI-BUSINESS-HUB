@@ -12,7 +12,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..models import TRADES, AuditLog
-from . import curation
+from . import curation, open_data
+from . import normalize as N
 from .curation import CurationError
 from .importer import MAX_PACKAGE_BYTES, Importer, PackageError
 from .models import (
@@ -33,9 +34,12 @@ from .models import (
     TenderBid,
 )
 from .search import company_profile, export_rows, facets, insights, parse_filters, search_companies, search_tenders
-from .sources import ensure_sources
+from .sources import REGISTRY, ensure_sources
 
-PRIORITY_CITIES = ["ينبع الصناعية", "ينبع", "جدة", "الرياض"]  # owner's priority order
+# sources a person may upload files for (no automated source is selectable here)
+UPLOAD_SOURCES = {e["key"]: e["name"] for e in REGISTRY
+                  if e.get("access_method") in ("licensed_upload", "research_package", "manual")}
+PRIORITY_CITIES =["ينبع الصناعية", "ينبع", "جدة", "الرياض"]  # owner's priority order
 LABELS = dict(TENDER_STATUS=TENDER_STATUS, LIFECYCLE=LIFECYCLE, RIGHTS=RIGHTS, VISIBILITY=VISIBILITY, IDENTITY=IDENTITY,
               TRADES=TRADES, SUBCONTRACT_REVIEW=SUBCONTRACT_REVIEW, EVIDENCE_KINDS=EVIDENCE_KINDS)
 
@@ -203,7 +207,7 @@ def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
 
     @app.get("/admin/archive/import", response_class=HTMLResponse)
     def archive_import_form(request: Request, db: Session = Depends(get_db), user=Depends(admin_only)):
-        return render(request, "archive_import.html", db, user, report=None, error=None, **LABELS)
+        return render(request, "archive_import.html", db, user, report=None, error=None, upload_sources=UPLOAD_SOURCES, **LABELS)
 
     @app.post("/admin/archive/import", dependencies=[Depends(verify_csrf)])
     async def archive_import(request: Request, db: Session = Depends(get_db), user=Depends(admin_only)):
@@ -212,18 +216,29 @@ def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
         mode = form.get("mode") or "dry-run"
 
         def fail(msg, status=400):
-            return render(request, "archive_import.html", db, user, status=status, report=None, error=msg, **LABELS)
+            return render(request, "archive_import.html", db, user, status=status, report=None, error=msg, upload_sources=UPLOAD_SOURCES, **LABELS)
         if upload is None or not hasattr(upload, "read"):
             return fail("أرفق ملف الحزمة (ZIP)")
         raw = await upload.read(MAX_PACKAGE_BYTES + 1)
         if len(raw) > MAX_PACKAGE_BYTES:
             return fail("الحزمة أكبر من 25 ميجابايت")
         from .. import db as dbm
-        importer = Importer(dbm.SessionLocal, created_by=f"web:{user.email}")
+        suffix = Path(str(getattr(upload, "filename", "") or "")).suffix.lower()
+        source_key = str(form.get("source") or "research_package_2026_11_13")
+        if source_key not in UPLOAD_SOURCES:
+            return fail("اختر مصدرًا مسجلًا للرفع")
+        importer = Importer(dbm.SessionLocal, created_by=f"web:{user.email}", source_key=source_key)
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "package.zip"
+            path = Path(tmp) / ("open_data" + suffix if suffix in (".xlsx", ".csv") else "package.zip")
             path.write_bytes(raw)
             try:
+                if suffix in (".xlsx", ".csv"):
+                    publisher = N.clean_text(str(form.get("publisher") or ""))[:200]
+                    if not publisher:
+                        return fail("ملف بيانات مفتوحة: اكتب اسم الجهة المالكة للملف")
+                    path = open_data.to_package(path, publisher=publisher,
+                                                source_url=N.clean_text(str(form.get("source_url") or ""))[:500])
+                    path.manifest["source_file"] = N.clean_text(str(upload.filename))[:200]
                 if mode == "staging":
                     report = importer.stage(path)
                 elif mode == "validate":
@@ -232,7 +247,7 @@ def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
                     report = importer.dry_run(path)
             except PackageError as exc:
                 return fail(str(exc))
-        return render(request, "archive_import.html", db, user, report=report, error=None, **LABELS)
+        return render(request, "archive_import.html", db, user, report=report, error=None, upload_sources=UPLOAD_SOURCES, **LABELS)
 
     @app.get("/admin/archive/batches/{batch_id}", response_class=HTMLResponse)
     def archive_batch(batch_id: int, request: Request, db: Session = Depends(get_db), user=Depends(staff)):

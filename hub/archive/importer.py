@@ -97,7 +97,9 @@ def _read_csv(blob: bytes, name: str, required: set[str]) -> list[dict]:
     return [{k: (v or "") for k, v in row.items() if k} for row in reader]
 
 
-def load_package(path: str | Path) -> Package:
+def load_package(path: str | Path | Package) -> Package:
+    if isinstance(path, Package):  # already built (e.g. hub.archive.open_data.to_package for an XLSX/CSV file)
+        return path
     path = Path(path)
     blobs: dict[str, bytes] = {}
     digest = hashlib.sha256()
@@ -136,6 +138,12 @@ def load_package(path: str | Path) -> Package:
                    tenders=_read_csv(blobs[FILES["tenders"]], FILES["tenders"], TENDER_COLUMNS),
                    bids=_read_csv(blobs[FILES["bids"]], FILES["bids"], BID_COLUMNS),
                    companies=_read_csv(blobs[FILES["companies"]], FILES["companies"], {"company_name_as_published"}))
+
+
+def _label(path, pkg: Package) -> str:
+    if isinstance(path, Package):
+        return str(pkg.manifest.get("source_file") or "open-data file")[:200]
+    return str(Path(path).name)[:200]
 
 
 # ------------------------------------------------------------------ validation (pure)
@@ -291,7 +299,7 @@ class Importer:
                 if running:
                     raise PackageError(f"دفعة سابقة لنفس الحزمة لم تكتمل (#{running.id}): استخدم --resume {running.id}")
                 batch = ImportBatch(source_id=source.id, package_sha256=pkg.sha256, status="in_progress",
-                                    label=str(Path(path).name), created_by=self.created_by, is_synthetic=self.synthetic,
+                                    label=_label(path, pkg), created_by=self.created_by, is_synthetic=self.synthetic,
                                     counts={}, checkpoint={"stage": "tenders", "next": 0})
                 s.add(batch)
                 s.flush()

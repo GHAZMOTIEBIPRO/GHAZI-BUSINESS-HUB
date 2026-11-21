@@ -24,6 +24,22 @@ STATUS_MAP = {
     "مغلقة": "closed",
     "ملغاة": "cancelled",
     "ملغية": "cancelled",
+    # wording used on official open-data lists
+    "تم الترسية": "awarded",
+    "تمت الترسيه": "awarded",
+    "مرسية": "awarded",
+    "عقد منشور بمورد مسمّى": "awarded",  # contract list row with a named supplier (hub/archive/open_data.py)
+    "منشورة": "announced",
+    "جديدة": "announced",
+    "منتهية": "closed",
+    "مغلق": "closed",
+    "قيد الفحص": "closed",
+    "تحت الفحص": "closed",
+    "ملغى": "cancelled",
+    "awarded": "awarded",
+    "open": "open",
+    "closed": "closed",
+    "cancelled": "cancelled",
 }
 UNKNOWN_LOCATION = {"", "غير محددة في الملخص", "غير محدد", "غير معلوم"}
 CITY_ALIASES = {"ينبع الصناعية": "ينبع"}  # same city for the region lookup; the published text is kept as-is

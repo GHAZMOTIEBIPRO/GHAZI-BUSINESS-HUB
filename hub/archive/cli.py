@@ -8,6 +8,10 @@
     python -m hub.archive.cli rollback ID                   undo everything a batch wrote
     python -m hub.archive.cli migrate                       apply archive migrations (alembic upgrade head)
 
+An official open-data table (XLSX/CSV with the publisher's own headers) is accepted in place of a package:
+    python -m hub.archive.cli import FILE.xlsx --publisher "وزارة الصحة (البيانات المفتوحة)" \
+        --source saudi_open_data --source-url https://... --staging
+
 The database is HUB_DATABASE_URL / DATABASE_URL. The URL is never printed. Nothing becomes public:
 records stay private until a licence for their source is verified (see docs/ARCHIVE.md).
 """
@@ -92,6 +96,10 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--resume", type=int, metavar="BATCH_ID")
     imp.add_argument("--chunk-size", type=int, default=200)
     imp.add_argument("--report")
+    imp.add_argument("--source", default="research_package_2026_11_13",
+                     help="registry key of the source (hub/archive/sources.py), e.g. saudi_open_data")
+    imp.add_argument("--publisher", help="official owner of an XLSX/CSV open-data file (required for those files)")
+    imp.add_argument("--source-url", default="", help="https page of the dataset (stored with every record)")
     for name in ("commit", "rollback"):
         sp = sub.add_parser(name)
         sp.add_argument("batch_id", type=int)
@@ -105,8 +113,17 @@ def main(argv: list[str] | None = None) -> int:
         print("archive migrations: at head")
         return 0
     engine, sf = _engine()
-    importer = Importer(sf, chunk_size=getattr(args, "chunk_size", 200))
+    importer = Importer(sf, chunk_size=getattr(args, "chunk_size", 200), source_key=getattr(args, "source", None)
+                        or "research_package_2026_11_13")
     try:
+        from .sources import REGISTRY
+        if args.cmd == "import" and args.source not in {e["key"] for e in REGISTRY}:
+            raise PackageError(f"مصدر غير مسجل: {args.source}")
+        if args.cmd == "import" and Path(args.package).suffix.lower() in (".xlsx", ".csv"):
+            if not args.publisher:
+                raise PackageError("ملف بيانات مفتوحة: حدّد --publisher (الجهة المالكة للملف)")
+            from .open_data import to_package
+            args.package = to_package(args.package, publisher=args.publisher, source_url=args.source_url)
         if args.cmd == "commit":
             print(json.dumps(importer.commit(args.batch_id), ensure_ascii=False))
             return 0
