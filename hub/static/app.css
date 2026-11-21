@@ -153,6 +153,24 @@ tr:last-child td{border-bottom:0}
 .site-footer a{color:#fff}
 .site-footer .wrap{display:grid;grid-template-columns:2fr 1fr 1fr;gap:1.5rem}
 @media (max-width:700px){.site-footer .wrap{grid-template-columns:1fr}}
+/* radar filter panel: a plain <details>, collapsed on phones by app.js */
+.filter-box>summary{display:none;list-style:none;cursor:pointer;margin-bottom:.6rem}
+.filter-box>summary::-webkit-details-marker{display:none}
+@media (max-width:700px){.filter-box>summary{display:inline-flex;gap:.4rem;align-items:center}}
+/* tables marked .stack become label/value cards on phones instead of squeezed columns */
+@media (max-width:700px){
+  .stack table,.stack tbody,.stack tr,.stack td{display:block;width:100%}
+  .stack thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .stack tr{padding:.6rem .8rem;border-bottom:1px solid var(--line)}
+  .stack td{border:0;padding:.2rem 0;display:flex;gap:.8rem;justify-content:space-between}
+  .stack td::before{content:attr(data-label);color:var(--muted,#667);font-size:.85rem;flex:0 0 38%}
+  .stack td:first-child{font-weight:600}
+}
+/* touch: every link at least ~32px tall on phones (WCAG 2.5.8 minimum is 24px) */
+@media (pointer:coarse),(max-width:700px){
+  .site-footer a{display:inline-block;padding-block:.45rem;min-height:32px}
+  .row-between>a,.stat-card a,.card p>a{display:inline-block;padding-block:.4rem;min-height:32px}
+}
 
 /* calculator */
 .result-row{display:flex;justify-content:space-between;gap:1rem;padding:.45rem 0;border-bottom:1px dashed var(--line)}

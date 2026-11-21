@@ -1,6 +1,7 @@
 name: ci
 on:
   push:
+    branches: [main]        # PR branches are covered by the pull_request run (no duplicate runs)
   pull_request:
 permissions:
   contents: read
@@ -44,8 +45,9 @@ jobs:
         run: |
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
+          # test server only: throw-away SQLite (opted in), sandbox open to the test user, no 2FA for the seeded admin
+          export HUB_ALLOW_SQLITE=true
           HUB_ENV=staging HUB_DATABASE_URL=sqlite:///data/ci.db python scripts/seed_demo.py
-          # test server only: sandbox open to the test user, 2FA not required for the seeded admin
           HUB_ENV=staging HUB_DATABASE_URL=sqlite:///data/ci.db HUB_SECRET_KEY=ci-only HUB_SANDBOX_CHECKOUT_OPEN=true \
             HUB_REQUIRE_STAFF_2FA=false uvicorn hub.app:app --port 8800 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8800/healthz && break; sleep 1; done
@@ -56,3 +58,28 @@ jobs:
           name: ui-screenshots
           path: ui-shots
           retention-days: 7
+
+  docker:
+    # the production image, run as Render runs it (staging + PostgreSQL), with restart persistence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hub
+          POSTGRES_PASSWORD: hub-ci
+          POSTGRES_DB: hub_docker
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hub -d hub_docker" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install httpx==0.28.1
+      - name: Build image and run acceptance against the container
+        env:
+          PG_URL: postgresql://hub:hub-ci@127.0.0.1:5432/hub_docker
+        run: bash scripts/ci_docker_check.sh

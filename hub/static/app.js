@@ -10,6 +10,10 @@
     });
   }
 
+  // phones: show results first; the filter panel opens on demand (stays open when a filter is active)
+  var fb = document.getElementById('filterBox');
+  if (fb && !fb.dataset.active && window.matchMedia('(max-width: 700px)').matches) fb.removeAttribute('open');
+
   document.querySelectorAll('form[data-confirm]').forEach(function (f) {
     f.addEventListener('submit', function (e) { if (!window.confirm(f.dataset.confirm)) e.preventDefault(); });
   });

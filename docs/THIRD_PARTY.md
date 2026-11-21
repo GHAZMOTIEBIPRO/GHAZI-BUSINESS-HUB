@@ -12,6 +12,8 @@
 | httpx | 0.28.1 | BSD-3 | outbound HTTP (sources, Moyasar) |
 | defusedxml | 0.7.1 | PSF | safe RSS parsing (XXE / entity bombs) |
 | IBM Plex Sans Arabic (Fontsource 5.2.5) | — | SIL OFL 1.1 | self-hosted font, licence in `hub/static/fonts/LICENSE-OFL.txt` |
+| PyJWT | 2.10.1 | MIT | verifies GitHub Actions OIDC tokens for the scheduled refresh (`hub/oidc.py`) |
+| cryptography | 45.0.7 | Apache-2.0 / BSD | RS256 signature checks for PyJWT |
 | pytest / ruff | 8.4.2 / 0.13.3 | MIT | dev only |
 | Playwright + Chromium | preinstalled | Apache-2.0 | UI tests only |
 | LibreOffice (headless) | system | MPL-2.0 | build-time recalculation + tests only; not shipped |

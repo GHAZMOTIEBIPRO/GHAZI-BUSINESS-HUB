@@ -201,6 +201,14 @@ def test_setup_closed_without_token(app, monkeypatch):
 def test_setup_never_promotes_existing_account_and_closes_after_use(app, session, monkeypatch):
     code = "s" * 40
     monkeypatch.setattr(settings, "setup_token", code)
+    # a mail provider is configured (mocked network): the admin must prove the address by e-mail
+    import httpx
+
+    from hub import mailer
+    monkeypatch.setenv("HUB_MAIL_PROVIDER", "brevo")
+    monkeypatch.setenv("HUB_MAIL_FROM", "noreply@example.sa")
+    monkeypatch.setenv("HUB_MAIL_API_KEY", "test-key")
+    monkeypatch.setattr(mailer, "TRANSPORT", httpx.MockTransport(lambda req: httpx.Response(201, json={"messageId": "m"})))
     victim = new_client(app)
     register(victim, "existing@example.sa")
     c = new_client(app)

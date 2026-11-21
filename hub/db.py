@@ -30,7 +30,10 @@ def make_engine(url: str):
     url = normalise_url(url)
     kwargs = {}
     if url.startswith("postgresql"):
-        kwargs.update(pool_pre_ping=True, pool_size=5, max_overflow=5, pool_recycle=300)
+        kwargs.update(pool_pre_ping=True, pool_size=5, max_overflow=5, pool_recycle=300,
+                      # Neon's pooled endpoint is PgBouncer in transaction mode: server-side prepared statements
+                      # may land on another backend, so psycopg must not auto-prepare. connect_timeout covers cold starts.
+                      connect_args={"prepare_threshold": None, "connect_timeout": 15})
     if url.startswith("sqlite"):
         path = url.split("///", 1)[-1]
         if path and path != ":memory:":

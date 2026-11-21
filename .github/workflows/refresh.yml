@@ -1,22 +1,45 @@
-# Optional scheduler: calls the protected refresh endpoint of a deployed instance.
-# Inert until the owner sets the HUB_BASE_URL variable and HUB_JOBS_TOKEN secret.
+# Scheduled radar refresh: closes expired opportunities, hides records past their re-check date, sends matching
+# alerts once, alerts reviewers when a source stops, and records a JobRun the site shows on /sources.
+# Auth: a short-lived GitHub OIDC token proves the call comes from THIS repo's refresh workflow on main
+# (hub/oidc.py). No secret has to be copied into GitHub. HUB_BASE_URL (repo variable) overrides the URL.
 name: radar-refresh
 on:
   schedule:
-    - cron: "17 * * * *"   # hourly; each source decides if it is due
+    - cron: "17 */2 * * *"   # every 2 hours: all current sources are manual; keeps free instance hours low
   workflow_dispatch:
-permissions: {}
+permissions:
+  contents: read
+  id-token: write            # lets the job request its own OIDC token; grants nothing else
+concurrency:
+  group: radar-refresh
+  cancel-in-progress: false
 jobs:
   refresh:
-    if: ${{ vars.HUB_BASE_URL != '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      URL: ${{ vars.HUB_BASE_URL || 'https://ghazi-business-hub-dd3h.onrender.com' }}
     steps:
-      - name: Trigger refresh
-        env:
-          URL: ${{ vars.HUB_BASE_URL }}
-          TOKEN: ${{ secrets.HUB_JOBS_TOKEN }}
+      - name: Wake the free instance (up to 4 minutes)
+        id: wake
         run: |
-          code=$(curl -s -o out.json -w '%{http_code}' -X POST -H "Authorization: Bearer $TOKEN" "$URL/internal/jobs/refresh")
-          cat out.json
+          for i in $(seq 1 24); do
+            code=$(curl -s -o health.json -D headers.txt -w '%{http_code}' --max-time 60 "$URL/healthz" || true)
+            if [ "$code" = "200" ]; then cat health.json; echo; echo "up=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+            if [ "$code" = "404" ] && grep -qi 'x-render-routing: no-server' headers.txt; then
+              echo "::warning::$URL is not deployed yet (Render has no service at this address); nothing to refresh"
+              echo "up=0" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$URL did not answer /healthz (last status $code)"; exit 1
+      - name: Refresh (GitHub OIDC, no stored secret)
+        if: steps.wake.outputs.up == '1'
+        run: |
+          TOKEN=$(curl -sf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+                  "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=ghazi-business-hub" | jq -r .value)
+          echo "::add-mask::$TOKEN"
+          code=$(curl -s -o out.json -w '%{http_code}' --max-time 120 -X POST -H "Authorization: Bearer $TOKEN" "$URL/internal/jobs/refresh")
+          cat out.json; echo
           test "$code" = "200"
+          echo "### Refresh $(jq -r '"job_run_id=\(.job_run_id) closed=\(.closed) stale=\(.stale) user_alerts=\(.user_alerts) admin_alerts=\(.admin_alerts)"' out.json)" >> "$GITHUB_STEP_SUMMARY"

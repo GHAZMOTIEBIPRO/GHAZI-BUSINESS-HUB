@@ -343,3 +343,16 @@ class AuditLog(Base):
     target: Mapped[str] = mapped_column(String(120))
     detail: Mapped[str] = mapped_column(Text, default="")
     at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class JobRun(Base):
+    """One row per scheduled/manual refresh: proves when the last automatic update ran and what it did."""
+    __tablename__ = "job_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job: Mapped[str] = mapped_column(String(40), default="refresh", index=True)
+    trigger: Mapped[str] = mapped_column(String(40))  # github_oidc:schedule, token, cli ...
+    started_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    finished_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+    ok: Mapped[bool] = mapped_column(Boolean, default=False)
+    summary: Mapped[dict] = mapped_column(JSON, default=dict)
+    error: Mapped[str] = mapped_column(Text, default="")

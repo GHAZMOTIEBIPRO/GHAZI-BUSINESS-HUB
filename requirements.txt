@@ -8,3 +8,5 @@ openpyxl==3.1.5
 httpx==0.28.1
 defusedxml==0.7.1
 psycopg[binary]==3.2.10   # PostgreSQL driver (LGPL-3.0, used unmodified as a library)
+pyjwt[crypto]==2.10.1    # GitHub Actions OIDC verification for scheduled jobs (MIT)
+cryptography==45.0.7     # RS256 for PyJWT (Apache-2.0 / BSD)

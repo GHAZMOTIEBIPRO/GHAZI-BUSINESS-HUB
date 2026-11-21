@@ -1,0 +1,80 @@
+# Acceptance checks against the DEPLOYED staging site over HTTPS: health + PostgreSQL, pages, security headers,
+# free/paid downloads, two throw-away accounts for isolation (deleted at the end), and real phone/desktop screenshots.
+name: live-check
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Site URL (defaults to the HUB_BASE_URL variable or the Render staging address)"
+        required: false
+      write:
+        description: "Create and delete two test accounts (isolation checks)"
+        type: boolean
+        default: true
+  schedule:
+    - cron: "41 3 * * *"     # daily read-only check (06:41 Riyadh)
+  push:
+    branches: [main]         # after a merge: wait until Render serves this commit, then verify it
+  # not on PR pushes: this checks the DEPLOYED site (main), not the PR's code
+permissions:
+  contents: read
+concurrency:
+  group: live-check
+  cancel-in-progress: false
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      URL: ${{ inputs.url || vars.HUB_BASE_URL || 'https://ghazi-business-hub-dd3h.onrender.com' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install httpx==0.28.1
+      - name: Wait until Render serves this commit (push to main only, up to 20 min)
+        if: github.event_name == 'push'
+        run: |
+          want=${GITHUB_SHA:0:12}
+          for i in $(seq 1 80); do
+            h=$(curl -s --max-time 60 "$URL/healthz" || true)
+            got=$(echo "$h" | jq -r '.commit // empty' 2>/dev/null || true)
+            echo "attempt $i: live commit='${got}' expected='${want}'"
+            [ "$got" = "$want" ] && exit 0
+            if [ -z "$got" ] && echo "$h" | jq -e 'has("base_url")' >/dev/null 2>&1; then
+              echo "::warning::new code is live but the host did not report RENDER_GIT_COMMIT; continuing"; exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::Render did not deploy ${want} within 20 minutes (still serving '${got}'). A failed health check keeps the previous version: check HUB_DATABASE_URL in Render."
+          exit 1
+      - name: HTTP acceptance checks
+        run: |
+          set -o pipefail   # without it `| tee` would hide a failing check
+          FLAGS=""
+          if [ "${{ github.event_name }}" = "push" ]; then FLAGS="--write"; fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.write }}" = "true" ]; then FLAGS="--write"; fi
+          python scripts/live_check.py "$URL" $FLAGS --out live-results.json | tee live-check.txt
+      - name: Phone + desktop screenshots
+        if: always()
+        run: |
+          set -o pipefail
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node scripts/live_screens.cjs "$URL" live-shots | tee live-screens.txt
+      - name: Summary
+        if: always()
+        run: |
+          { echo '### Live check'; echo '```'; cat live-check.txt live-screens.txt 2>/dev/null | grep -E 'PASS|FAIL|INFO|passed'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          echo "===== RESULTS ($URL) ====="; cat live-check.txt live-screens.txt 2>/dev/null | grep -E 'PASS|FAIL|INFO|passed' || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-evidence
+          path: |
+            live-results.json
+            live-check.txt
+            live-screens.txt
+            live-shots
+          retention-days: 30
