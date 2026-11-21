@@ -23,18 +23,12 @@ import httpx
 UA = "ghazi-hub-source-probe/1.2 (licence and terms check; log only)"
 # (label, url, kind) kind: links = list dataset-like links; text = print the page text; pdf; api = raw JSON head;
 # visitor = links + (with --browser) an anonymous headless visit
+# Run 44862352265 (2026-11-21) settled the others: tenders.etimad.sa answers automated clients with a CAPTCHA
+# (never retried, never worked around); apiportal.etimad.sa, open.data.gov.sa, od.data.gov.sa time out from runners;
+# the Royal Commission hosts do not resolve. Only the portal.etimad.sa pages remain worth probing.
 PAGES = [
     ("etimad open data library", "https://portal.etimad.sa/ar-sa/ecollaboration/indexopendatarequest", "visitor"),
-    ("etimad open data policy", "https://portal.etimad.sa/ar-SA/simplepage/simplepagedetail?PageGuid=a2b884b7-3d01-4518-90f6-a244f3977731", "text"),
-    ("etimad contact policy and terms", "https://portal.etimad.sa/ar-sa/simplepage/simplepagedetail?pageAlias=contact-policy-and-terms", "text"),
-    ("etimad usage policy (static)", "https://tenders.etimad.sa/StaticFIles/AboutMonafasat/" + urllib.parse.quote("سياسة الاستخدام.pdf"), "pdf"),
-    ("etimad tenders for visitors", "https://tenders.etimad.sa/Tender/AllTendersForVisitor", "visitor"),
-    ("etimad api terms", "https://apiportal.etimad.sa/ar/terms-and-conditions", "text"),
-    ("etimad api products", "https://apiportal.etimad.sa/en/api_products", "links"),
-    ("open data platform", "https://open.data.gov.sa/", "links"),
-    ("open data licence (old portal)", "https://od.data.gov.sa/ar/policies/open-data", "text"),
-    ("rc yanbu", "https://www.rcyanbu.gov.sa/", "links"),
-    ("rcjy", "https://www.rcjy.gov.sa/", "links"),
+    ("etimad open data library (en)", "https://portal.etimad.sa/en-us/ecollaboration/indexopendatarequest", "visitor"),
 ]
 LINK_HINT = re.compile(r"(\.xlsx|\.xls|\.csv|\.json|\.zip|opendata|open-data|dataset|download|getattachment|"
                        r"tender|منافس|ترسي|عقود|بيانات|ترخيص|رخصة|licen)", re.I)
@@ -121,7 +115,11 @@ def browser_visit(url: str) -> None:
     with sync_playwright() as p:
         b = p.chromium.launch()
         page = b.new_context(locale="ar-SA", user_agent=UA).new_page()
-        resp = page.goto(url, wait_until="networkidle", timeout=60000)
+        resp = page.goto(url, wait_until="domcontentloaded", timeout=90000)
+        try:  # the portal keeps background requests open; settle briefly, then read whatever rendered
+            page.wait_for_load_state("networkidle", timeout=20000)
+        except Exception as e:
+            print(f"   [browser] still loading after 20s ({type(e).__name__}); reading what rendered")
         final = page.url
         print(f"   [browser] HTTP {resp.status if resp else '?'} final={final[:160]}")
         has_password = page.locator("input[type=password]").count() > 0
