@@ -103,10 +103,10 @@ def count() -> int:
 
 def page_context(city: str, cat: str) -> dict:
     """Template context for the public /sources page. Unknown filter values are dropped, never echoed."""
-    city = city if city in FOCUS_CITIES else "all"
+    city = city if city in CITIES or city == "all" else "all"
     cat = cat if cat in categories() else ""
     return {"entries": sources(city, cat or None), "categories": categories(), "city": city, "cat": cat,
-            "counts": {c: len(sources(c)) for c in ["all", *FOCUS_CITIES]}, "focus_cities": FOCUS_CITIES,
+            "counts": {c: len(sources(c)) for c in ["all", *FOCUS_CITIES]}, "focus_cities": FOCUS_CITIES, "available_cities": sorted(CITIES),
             "EVIDENCE_STATUS": EVIDENCE_STATUS, "AUTOMATION": AUTOMATION, "RIGHTS_BADGE": RIGHTS_BADGE, "total": count()}
 
 
