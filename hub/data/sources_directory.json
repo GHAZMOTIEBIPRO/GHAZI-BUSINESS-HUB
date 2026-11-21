@@ -297,6 +297,287 @@
       "automation": "none",
       "channel": false,
       "notes": ""
+    },
+    {
+      "key": "aramco-contracting",
+      "name": "أرامكو — فرص المقاولين",
+      "owner": "أرامكو السعودية",
+      "category": "industrial",
+      "cities": [
+        "all"
+      ],
+      "homepage": "https://www.aramco.com/ar/what-we-do/suppliers/contracting-opportunities",
+      "terms_url": "https://www.aramco.com/ar/what-we-do/suppliers/contracting-opportunities",
+      "what": "تأهيل المقاولين لقوائم العطاءات العامة لخدمات البناء والمرافق والصيانة",
+      "how_to_use": "راجع نطاق الأعمال ثم سجّل كمورد واطلب التأهيل",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: الصفحة الرسمية تصف قوائم المقاولين وتعلن مجالات خدمات التعاقد. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "neom-suppliers",
+      "name": "نيوم — بوابة الموردين",
+      "owner": "نيوم",
+      "category": "developers",
+      "cities": [
+        "تبوك"
+      ],
+      "homepage": "https://www.neom.com/ar-sa/our-business/suppliers",
+      "terms_url": "https://www.neom.com/ar-sa/our-business/suppliers",
+      "what": "تسجيل الموردين والدعوات لمنافسات RFx والعقود",
+      "how_to_use": "سجّل وحدد تخصص البناء والتشطيبات لتلقي الدعوات بعد التأهيل",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: تؤكد الصفحة أن التسجيل شرط لتلقي الدعوات وأن الدخول إلى المناقصات مخصص للموردين. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "nwc-vendors",
+      "name": "شركة المياه الوطنية — الموردون والمنافسات",
+      "owner": "شركة المياه الوطنية",
+      "category": "industrial",
+      "cities": [
+        "all"
+      ],
+      "homepage": "https://www.nwc.com.sa/AR/BusinessSector/VendorsRelationships/Pages/default.aspx",
+      "terms_url": "https://www.nwc.com.sa/AR/BusinessSector/VendorsRelationships/Pages/default.aspx",
+      "what": "بوابة الموردين ومعلومات المناقصات والترسيات",
+      "how_to_use": "سجّل واستخرج رقم المورد ثم تابع المنافسات ذات الصلة",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: تذكر الصفحة الرسمية التسجيل وتصنيف الموردين وخدمات المناقصات والترسيات. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "sec-contractors",
+      "name": "السعودية للطاقة — بوابة المقاولين",
+      "owner": "السعودية للطاقة",
+      "category": "industrial",
+      "cities": [
+        "all"
+      ],
+      "homepage": "https://www.se.com.sa/en/Ourpartners/ColumnA/Our-Supply-Chains/Our-Contractors",
+      "terms_url": "https://www.se.com.sa/en/Ourpartners/ColumnA/Our-Supply-Chains/Our-Contractors",
+      "what": "تسجيل المقاولين والتأهيل وتقديم مستندات العطاءات",
+      "how_to_use": "سجّل كمقاول وتابع الدعوات في نطاق خدمات منشأتك",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: تصف الصفحة الرسمية إجراءات العطاءات والمستندات عبر بوابة المقاولين. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "sabic-suppliers",
+      "name": "سابك — تسجيل الموردين",
+      "owner": "سابك",
+      "category": "industrial",
+      "cities": [
+        "all"
+      ],
+      "homepage": "https://supplier.sabic.com/RegisterSABICSupplier.aspx",
+      "terms_url": "https://supplier.sabic.com/RegisterSABICSupplier.aspx",
+      "what": "تأهيل الموردين واستقبال طلبات العروض والشراء",
+      "how_to_use": "أكمل التسجيل والامتثال والتأهيل الفني قبل إرسال العروض",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: توضح بوابة سابك الرسمية التسجيل والتأهيل وإرسال العروض للمسجلين. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "maaden-suppliers",
+      "name": "معادن — تسجيل الموردين",
+      "owner": "شركة التعدين العربية السعودية (معادن)",
+      "category": "industrial",
+      "cities": [
+        "all"
+      ],
+      "homepage": "https://www.maaden.com.sa/",
+      "terms_url": "https://www.maaden.com.sa/",
+      "what": "بوابة تسجيل مقدمي خدمات المشاريع والمرافق الصناعية",
+      "how_to_use": "من الموقع الرسمي افتح Supplier Portal وأكمل التسجيل المحلي",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: دليل تسجيل الموردين الرسمي منشور في maaden.com.sa. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "redsea-suppliers",
+      "name": "البحر الأحمر الدولية — الموردون",
+      "owner": "البحر الأحمر الدولية",
+      "category": "developers",
+      "cities": [
+        "تبوك",
+        "ينبع"
+      ],
+      "homepage": "https://www.redseaglobal.com/ar/vendor-registration/",
+      "terms_url": "https://www.redseaglobal.com/ar/vendor-registration/",
+      "what": "طلبات التسجيل المبدئي وفرص المقاولات والتشطيبات وفق التأهيل",
+      "how_to_use": "سجّل اهتمامك بالأعمال الملائمة وتابع استكمال التأهيل",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: توضح الصفحة الرسمية أن المناقصات وخطة المشتريات متاحة للمؤهلين فقط. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "qiddiya-suppliers",
+      "name": "القدية — تسجيل الموردين",
+      "owner": "شركة القدية للاستثمار",
+      "category": "developers",
+      "cities": [
+        "الرياض"
+      ],
+      "homepage": "https://qiddiya.com/ar/contact/vendor/",
+      "terms_url": "https://qiddiya.com/ar/contact/vendor/",
+      "what": "تسجيل الاهتمام بمشاريع المدينة ومشتريات الإنشاءات",
+      "how_to_use": "أرسل بيانات منشأتك عبر قناة الموردين وانتظر إجراءات التأهيل",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: صفحة القدية الرسمية تحيل إلى بوابة تسجيل الموردين. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "diriyah-company-suppliers",
+      "name": "شركة الدرعية — الموردون",
+      "owner": "شركة الدرعية",
+      "category": "developers",
+      "cities": [
+        "الرياض"
+      ],
+      "homepage": "https://www.diriyahcompany.sa/en/vendor-register",
+      "terms_url": "https://www.diriyahcompany.sa/en/vendor-register",
+      "what": "تسجيل المورد وتأهيله عبر استبيانات متخصصة",
+      "how_to_use": "سجّل لدى شركة الدرعية مستقلاً عن هيئة تطوير بوابة الدرعية",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: تؤكد الصفحة الرسمية اختلاف تسجيل الشركة عن تسجيل الهيئة ومراحل التأهيل الثلاث. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "sar-suppliers",
+      "name": "سار — بوابة الموردين والمنافسات",
+      "owner": "الخطوط الحديدية السعودية (سار)",
+      "category": "industrial",
+      "cities": [
+        "all"
+      ],
+      "homepage": "https://www.sar.com.sa/ar/ext/vendors/",
+      "terms_url": "https://www.sar.com.sa/ar/ext/vendors/",
+      "what": "بوابة الموردين وقائمة المنافسات والمشاريع",
+      "how_to_use": "سجّل كمورد ثم تابع قسم المنافسات وطلبات العروض",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: تتضمن صفحة سار الرسمية رابط التسجيل وقسم المنافسات. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "riyadh-airports-tenders",
+      "name": "مطارات الرياض — فرص الأعمال",
+      "owner": "شركة مطارات الرياض",
+      "category": "industrial",
+      "cities": [
+        "الرياض"
+      ],
+      "homepage": "https://tendering.riyadhairports.com/web-ar/form.shtml",
+      "terms_url": "https://tendering.riyadhairports.com/web-ar/form.shtml",
+      "what": "بوابة فرص الأعمال وتسجيل الموردين للمرافق والمطارات",
+      "how_to_use": "أنشئ ملف شركة وتابع دعوات التأهيل والمنافسات",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: تعلن بوابة مطارات الرياض الرسمية عن فرص الأعمال وتسجيل الشركات. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "rua-madinah-suppliers",
+      "name": "رؤى المدينة — تسجيل الموردين",
+      "owner": "شركة رؤى المدينة القابضة",
+      "category": "developers",
+      "cities": [
+        "المدينة المنورة"
+      ],
+      "homepage": "https://www.ruaalmadinah.com/suppliers/",
+      "terms_url": "https://www.ruaalmadinah.com/suppliers/",
+      "what": "بوابة شركاء التصميم والتطوير والبناء والخدمات",
+      "how_to_use": "سجّل عبر رابط تسجيل الموردين في الصفحة الرسمية",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: تدعو الشركة على صفحتها الرسمية شركاء البناء للتسجيل في البوابة. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "ksrelief-suppliers",
+      "name": "مركز الملك سلمان للإغاثة — الموردون",
+      "owner": "مركز الملك سلمان للإغاثة والأعمال الإنسانية",
+      "category": "tenders",
+      "cities": [
+        "all"
+      ],
+      "homepage": "https://www.ksrelief.org/ar/Services/Index/3",
+      "terms_url": "https://www.ksrelief.org/ar/Services/Index/3",
+      "what": "بوابة تأهيل الموردين للمشتريات والخدمات ذات الصلة",
+      "how_to_use": "ارفع السجل والشهادات المطلوبة مع طلب التسجيل",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: توضح صفحة المركز الرسمية شروط تسجيل المورد وتنفي أن التسجيل يضمن التعاقد. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": true,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
+    },
+    {
+      "key": "etimad-developer",
+      "name": "اعتماد — بوابة المطورين والربط",
+      "owner": "المركز الوطني لنظم الموارد الحكومية",
+      "category": "open_data",
+      "cities": [
+        "all"
+      ],
+      "homepage": "https://apiportal.etimad.sa/ar",
+      "terms_url": "https://apiportal.etimad.sa/ar",
+      "what": "فهرس منتجات الربط الرسمي عبر واجهات التطبيقات",
+      "how_to_use": "اطلب اشتراكًا رسميًا في منتج المناقصات عند إتاحته وترخيص استخدامه",
+      "rights": "link_only",
+      "rights_evidence": "تدقيق رابط الجهة 2026-11-21: البوابة الرسمية تتيح طلب اشتراكات APIs؛ لم يُعتمد حق إعادة نشر بيانات المناقصات. لم يتم التحقق من ترخيص إعادة الاستخدام.",
+      "evidence_status": "not_checked",
+      "rights_checked_at": "2026-11-21",
+      "automation": "none",
+      "channel": false,
+      "notes": "إحالة أو تسجيل يدوي فقط؛ ليست منافسة مفتوحة مثبتة، ولا تسمح بسحب المحتوى أو إعادة نشره."
     }
   ]
 }
