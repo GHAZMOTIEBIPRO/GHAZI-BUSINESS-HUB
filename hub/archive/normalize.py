@@ -117,6 +117,14 @@ def parse_int(value: str | None) -> int | None:
     return int(text) if text.isdigit() else None
 
 
+def registry_number(text: str | None) -> str:
+    """A 10-digit CR / unified number from published text ("1010101010", "١٠١٠١٠١٠١٠", "1010101010.0"), else ""."""
+    digits = clean_text(text).translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")).replace(" ", "")
+    if re.fullmatch(r"\d{10}\.0+", digits):
+        digits = digits.split(".")[0]
+    return digits if re.fullmatch(r"\d{10}", digits) else ""
+
+
 def map_status(text: str | None) -> str:
     cleaned = clean_text(text)
     return STATUS_MAP.get(cleaned) or STATUS_MAP.get(cleaned.lower(), "unknown")

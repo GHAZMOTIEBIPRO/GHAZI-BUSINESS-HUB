@@ -166,12 +166,68 @@ def test_upload_by_catalog_dataset_records_publisher_link_and_awards(app, databa
     assert f'href="/admin/archive/batches/{batch.id}"' in after
 
 
+PO_HEADERS = ["وحدة التشغيل", "رقم امر الشراء", "وصف امر الشراء", "السجل التجتري للمورد", "اسم المورد",
+              "مبلغ التعميد", "سنة التعميد", "تاريخ الترسية"]
+
+
+def po_workbook(path, sheets):
+    wb = Workbook()
+    summary = wb.active
+    summary.title = "الاحصائيات"  # a totals sheet without a title column: skipped
+    summary.append(["وحدة التشغيل", "2019", "2020", "المجموع"])
+    summary.append(["الديوان", 10, 12, 22])
+    for name, rows in sheets.items():
+        ws = wb.create_sheet(name)
+        ws.append(PO_HEADERS)
+        for r in rows:
+            ws.append(r)
+    wb.save(path)
+    return path
+
+
+def test_purchase_orders_across_sheets_attach_supplier_cr_safely(database, tmp_path, session):
+    from hub.archive.models import Company, VerificationEvent
+    path = po_workbook(tmp_path / "po.xlsx", {
+        "الديوان": [["الديوان", "4500000001", "صيانة مبنى اختبار", "1010101010", "مؤسسة اختبار للصيانة", 120000.0, "2020",
+                     "2020-03-01"],
+                    ["الديوان", "4500000002", "دهانات اختبار", "١٠١٠١٠١٠١٠", "مؤسسة اختبار  للصيانة", 50000.0, "2021",
+                     "2021-01-10"]],  # same CR, spelled with two spaces: same name_key -> same company
+        "المدينة المنورة": [["فرع المدينة", "4500000003", "توريد بلاط اختبار", "2020202020", "شركة اختبار للبلاط", 75000.0,
+                             "2019", "2019-11-20"],
+                            ["فرع المدينة", "4500000004", "ترميم اختبار", "1010101010", "مؤسسة الاختبار للصيانة والترميم",
+                             90000.0, "2019", "2019-12-01"],  # another name with an already-held CR: review only
+                            ["فرع المدينة", "4500000005", "أبواب اختبار", "12345", "شركة اختبار الأبواب", 1000.0, "2019",
+                             "2019-12-05"]]})  # invalid CR: warning, no number stored
+    pkg = open_data.to_package(path, publisher="بيانات مفتوحة (اختبار)", source_url="https://example.test/po")
+    assert pkg.manifest["sheets_used"] == ["الديوان", "المدينة المنورة"] and pkg.manifest["sheets_skipped"] == ["الاحصائيات"]
+    imp = Importer(dbm.SessionLocal, source_key="saudi_open_data", today=TODAY)
+    report = imp.stage(pkg)
+    counts = report["batch_counts"]
+    assert counts["tenders_new"] == 5 and counts["awards_new"] == 5 and counts["companies_cr_verified"] == 2
+    assert counts["cr_shared_with_other_name"] == 1
+    assert any("ليس 10 أرقام" in w["reason"] for w in report["warnings"])
+    verified = {c.display_name: (c.cr_number, c.identity_status) for c in session.scalars(select(Company))}
+    assert verified["مؤسسة اختبار للصيانة"] == ("1010101010", "registry_verified")
+    assert verified["شركة اختبار للبلاط"] == ("2020202020", "registry_verified")
+    assert verified["مؤسسة الاختبار للصيانة والترميم"] == (None, "name_only_unverified")
+    assert verified["شركة اختبار الأبواب"] == (None, "name_only_unverified")
+    review = session.scalars(select(VerificationEvent).where(VerificationEvent.event == "same_cr_as_company")).one()
+    assert "1010101010" in review.result
+    awards = session.scalars(select(TenderAward)).all()
+    assert {a.verification_status for a in awards} == {"official_open_data"}
+    t = session.scalars(select(ProcurementTender).where(ProcurementTender.official_reference == "4500000003")).one()
+    assert t.issuer.name == "فرع المدينة" and t.raw["src:sheet"] == "المدينة المنورة" and t.status == "awarded"
+    imp.rollback(report["batch_id"])
+    session.expire_all()
+    assert session.scalar(select(func.count(Company.id))) == 0  # CRs restored, then the batch's own rows removed
+
+
 def test_unrecognised_headers_are_refused_with_what_was_found(tmp_path):
     path = xlsx(tmp_path / "x.xlsx", ["العمود الأول", "العمود الثاني"], [["a", "b"]])
     with pytest.raises(PackageError, match="title.*العمود الأول"):
         open_data.to_package(path, publisher="x")
     (tmp_path / "x.pdf").write_bytes(b"%PDF-1.4")
-    with pytest.raises(PackageError, match="XLSX أو CSV"):
+    with pytest.raises(PackageError, match="XLSX أو XLS أو CSV"):
         open_data.to_package(tmp_path / "x.pdf", publisher="x")
 
 

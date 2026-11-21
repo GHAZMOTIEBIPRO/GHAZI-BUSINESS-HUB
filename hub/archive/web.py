@@ -229,17 +229,17 @@ def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
         source_key = str(form.get("source") or "research_package_2026_11_13")
         chosen = dataset(str(form.get("dataset") or ""))
         if chosen is not None:  # an official Etimad dataset: its publisher, link and label come from the catalog
-            if suffix not in (".xlsx", ".csv"):
+            if suffix not in (".xlsx", ".xls", ".csv"):
                 return fail("مجموعات اعتماد المفتوحة تُرفع بملفها XLSX أو CSV كما نُزّل")
             source_key = "etimad_open_data"
         if source_key not in UPLOAD_SOURCES:
             return fail("اختر مصدرًا مسجلًا للرفع")
         importer = Importer(dbm.SessionLocal, created_by=f"web:{user.email}", source_key=source_key)
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / ("open_data" + suffix if suffix in (".xlsx", ".csv") else "package.zip")
+            path = Path(tmp) / ("open_data" + suffix if suffix in (".xlsx", ".xls", ".csv") else "package.zip")
             path.write_bytes(raw)
             try:
-                if suffix in (".xlsx", ".csv"):
+                if suffix in (".xlsx", ".xls", ".csv"):
                     if chosen is not None:
                         publisher, source_url = catalog()["publisher"], chosen["url"]
                     else:

@@ -119,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
         from .sources import REGISTRY
         if args.cmd == "import" and args.source not in {e["key"] for e in REGISTRY}:
             raise PackageError(f"مصدر غير مسجل: {args.source}")
-        if args.cmd == "import" and Path(args.package).suffix.lower() in (".xlsx", ".csv"):
+        if args.cmd == "import" and Path(args.package).suffix.lower() in (".xlsx", ".xls", ".csv"):
             if not args.publisher:
                 raise PackageError("ملف بيانات مفتوحة: حدّد --publisher (الجهة المالكة للملف)")
             from .open_data import to_package

@@ -8,7 +8,7 @@
   {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
   <form class="card stack" method="post" action="/admin/archive/import" enctype="multipart/form-data">{{ m.csrf_field() }}
     <label>الملف: حزمة ZIP بنفس هيكل حزمة 2026-11-13، أو ملف بيانات مفتوحة رسمي XLSX/CSV بأعمدة الجهة نفسها (حتى 25 ميجابايت)
-      <input type="file" name="file" accept=".zip,.xlsx,.csv,application/zip" required></label>
+      <input type="file" name="file" accept=".zip,.xlsx,.xls,.csv,application/zip" required></label>
     <label>مجموعة اعتماد المفتوحة (إن كان الملف منها — تُملأ الجهة والرابط تلقائيًا)<select name="dataset" id="datasetSelect">
       <option value="">— ليس من مكتبة اعتماد —</option>
       {% for d in catalog.datasets|sort(attribute='priority') %}<option value="{{ d.id }}">[{{ d.priority }}] {{ d.title }}</option>{% endfor %}</select></label>

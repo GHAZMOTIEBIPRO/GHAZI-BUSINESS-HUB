@@ -24,14 +24,16 @@ from .importer import MAX_PACKAGE_BYTES, Package, PackageError
 # importer column -> header variants seen on Saudi open-data procurement files (compared after _norm)
 SYNONYMS: dict[str, list[str]] = {
     "tender_reference": ["رقم المنافسة", "الرقم المرجعي", "رقم المنافسه", "الرقم المرجعي للمنافسة", "رقم العقد",
-                         "رقم المناقصة", "tender number", "reference number", "tender no", "contract number", "tender id"],
+                         "رقم المناقصة", "رقم امر الشراء", "رقم أمر الشراء", "tender number", "reference number", "tender no",
+                         "contract number", "tender id", "purchase order number", "po number"],
     "title": ["اسم المنافسة", "اسم المنافسه", "عنوان المنافسة", "اسم المشروع", "اسم العقد", "موضوع العقد",
               "اسم المناقصة", "tender name", "tender title", "competition name", "project name", "contract name",
               "contract title", "procurement title", "procurement name", "name of competitions", "عنوان المشتريات",
-              "اسم المشتريات", "وصف المنافسة", "وصف العقد", "description", "tender description"],
+              "اسم المشتريات", "وصف المنافسة", "وصف العقد", "وصف امر الشراء", "وصف أمر الشراء", "description",
+              "tender description", "purchase order description"],
     "issuer": ["الجهة", "اسم الجهة", "الجهة الحكومية", "الجهة الطارحة", "الجهة المالكة", "الإدارة", "الجهة المستفيدة",
                "اسم الجهة الحكومية", "agency", "entity", "entity name", "government entity", "agency name",
-               "organization", "organization name", "department"],
+               "organization", "organization name", "department", "وحدة التشغيل", "operating unit"],
     "city_or_location": ["المدينة", "مكان التنفيذ", "موقع التنفيذ", "المنطقة", "المحافظة", "city", "location", "region"],
     "announced_status": ["حالة المنافسة", "الحالة", "حالة العقد", "status", "tender status"],
     "published_date": ["تاريخ النشر", "تاريخ الطرح", "تاريخ الإعلان", "تاريخ نشر المنافسة", "تاريخ البدء",
@@ -40,7 +42,7 @@ SYNONYMS: dict[str, list[str]] = {
     "submission_deadline": ["آخر موعد لتقديم العروض", "اخر موعد لتقديم العروض", "آخر موعد للتقديم",
                             "تاريخ إغلاق المنافسة", "تاريخ فتح العروض", "submission deadline", "closing date"],
     "award_date": ["تاريخ الترسية", "تاريخ توقيع العقد", "تاريخ العقد", "تاريخ بداية العقد", "award date",
-                   "contract date", "contract start date"],
+                   "contract date", "contract start date", "تاريخ التعميد"],
     "winner_name_as_published": ["اسم المورد", "المورد", "اسم المتعاقد", "المتعاقد", "اسم المقاول", "المقاول",
                                  "الشركة الفائزة", "اسم الشركة", "المورد الفائز", "المورد المرسى عليه",
                                  "اسم المورد المرسى عليه", "supplier", "supplier name", "suppliers", "contractor",
@@ -48,7 +50,13 @@ SYNONYMS: dict[str, list[str]] = {
                                  "vendor name"],
     "award_amount_sar_as_published": ["قيمة العقد", "قيمة الترسية", "مبلغ العقد", "قيمة المنافسة", "قيمة المشتريات",
                                       "القيمة", "قيمة العقد بالريال", "contract value", "award value", "awarded value",
-                                      "tender value", "procurement value", "value of competitions", "amount", "value"],
+                                      "tender value", "procurement value", "value of competitions", "مبلغ التعميد",
+                                      "قيمة التعميد", "مبلغ الترسية", "amount", "value"],
+    # the supplier's CR / unified number when the publisher prints it next to the name (identity, not a guess)
+    "winner_cr_as_published": ["السجل التجاري للمورد", "السجل التجتري للمورد", "رقم السجل التجاري للمورد",
+                               "سجل المورد", "السجل التجاري", "رقم السجل التجاري", "الرقم الموحد للمورد",
+                               "supplier cr", "supplier cr number", "supplier commercial registration",
+                               "commercial registration number", "cr number"],
     # offers submitted only; "bids that passed evaluation" is a different number and stays in the source columns
     "offer_count_claimed": ["عدد العروض", "عدد العروض المقدمة", "number of bids", "number of offers",
                             "number of submitted bids"],
@@ -122,11 +130,22 @@ def _date_text(value) -> str:
     return text
 
 
-def read_table(path: Path) -> tuple[list[str], list[list]]:
-    """Headers and rows of the first non-empty sheet (XLSX) or of the CSV (UTF-8, or Windows-1256 as published)."""
+def _sheet_rows(rows: list[list]) -> tuple[list[str], list[list]] | None:
+    rows = [r for r in rows if any(c not in (None, "") for c in r)]
+    if len(rows) < 2:
+        return None
+    header_at = next((i for i, r in enumerate(rows[:10]) if sum(c not in (None, "") for c in r) >= 2), None)
+    if header_at is None:
+        return None
+    return [_cell(h) for h in rows[header_at]], rows[header_at + 1:]
+
+
+def read_sheets(path: Path) -> list[tuple[str, list[str], list[list]]]:
+    """(sheet name, headers, rows) for every sheet with a header row: XLSX, XLS or CSV (UTF-8 / Windows-1256)."""
     if path.stat().st_size > MAX_PACKAGE_BYTES:
         raise PackageError("الملف أكبر من 25 ميجابايت")
     suffix = path.suffix.lower()
+    out = []
     if suffix == ".xlsx":
         from openpyxl import load_workbook
         try:
@@ -135,15 +154,31 @@ def read_table(path: Path) -> tuple[list[str], list[list]]:
             raise PackageError("ملف XLSX غير صالح") from exc
         try:
             for ws in wb.worksheets:
-                rows = [list(r) for r in ws.iter_rows(values_only=True)]
-                rows = [r for r in rows if any(c not in (None, "") for c in r)]
-                if len(rows) >= 2:
-                    header_at = next(i for i, r in enumerate(rows[:10]) if sum(c not in (None, "") for c in r) >= 2)
-                    return [_cell(h) for h in rows[header_at]], rows[header_at + 1:]
+                got = _sheet_rows([list(r) for r in ws.iter_rows(values_only=True)])
+                if got:
+                    out.append((ws.title, *got))
         finally:
             wb.close()
-        raise PackageError("لا توجد ورقة فيها صف عناوين وبيانات")
-    if suffix == ".csv":
+    elif suffix == ".xls":
+        import xlrd
+        try:
+            book = xlrd.open_workbook(str(path))
+        except Exception as exc:
+            raise PackageError("ملف XLS غير صالح") from exc
+        for sh in book.sheets():
+            rows = []
+            for r in range(sh.nrows):
+                row = []
+                for cell in sh.row(r):
+                    if cell.ctype == xlrd.XL_CELL_DATE:
+                        row.append(xlrd.xldate_as_datetime(cell.value, book.datemode))
+                    else:
+                        row.append(cell.value)
+                rows.append(row)
+            got = _sheet_rows(rows)
+            if got:
+                out.append((sh.name, *got))
+    elif suffix == ".csv":
         blob = path.read_bytes()
         for encoding in ("utf-8-sig", "cp1256"):
             try:
@@ -153,22 +188,50 @@ def read_table(path: Path) -> tuple[list[str], list[list]]:
                 continue
         else:
             raise PackageError("ترميز CSV غير معروف (UTF-8 أو Windows-1256)")
-        rows = [r for r in csv.reader(io.StringIO(text)) if any(c.strip() for c in r)]
-        if len(rows) < 2:
-            raise PackageError("ملف CSV بلا بيانات")
-        return [_cell(h) for h in rows[0]], rows[1:]
-    raise PackageError("صيغة غير مدعومة: XLSX أو CSV فقط")
+        got = _sheet_rows([r for r in csv.reader(io.StringIO(text))])
+        if got:
+            out.append(("csv", *got))
+    else:
+        raise PackageError("صيغة غير مدعومة: XLSX أو XLS أو CSV فقط")
+    if not out:
+        raise PackageError("لا توجد ورقة فيها صف عناوين وبيانات")
+    return out
+
+
+def read_table(path: Path) -> tuple[list[str], list[list]]:
+    """Headers and rows of the first sheet with a header row (kept for callers that need one table)."""
+    _name, headers, rows = read_sheets(path)[0]
+    return headers, rows
 
 
 def to_package(path: str | Path, *, publisher: str, source_url: str = "", mapping: dict[str, str] | None = None) -> Package:
     """Convert one open-data file into a Package. `publisher` names the official owner of the file."""
     path = Path(path)
-    headers, rows = read_table(path)
-    mapping = mapping or detect_mapping(headers)
-    missing = [f for f in REQUIRED if f not in mapping]
-    if missing:
-        raise PackageError("لم يُتعرف على أعمدة إلزامية: " + "، ".join(missing) + " — العناوين الموجودة: "
+    sheets = read_sheets(path)
+    used, skipped, tenders, total_rows = [], [], [], 0
+    for sheet, headers, rows in sheets:
+        sheet_mapping = mapping or detect_mapping(headers)
+        if any(f not in sheet_mapping for f in REQUIRED):
+            skipped.append(sheet)
+            continue
+        used.append(sheet)
+        total_rows += len(rows)
+        tenders += _sheet_records(path, sheet if len(sheets) > 1 else "", headers, rows, sheet_mapping, publisher,
+                                  source_url)
+    if not used:
+        headers = sheets[0][1]
+        raise PackageError("لم يُتعرف على أعمدة إلزامية: " + "، ".join(REQUIRED) + " — العناوين الموجودة: "
                            + "، ".join(h for h in headers if h)[:300])
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return Package(sha256=digest, manifest={"source_file": path.name, "publisher": publisher,
+                                            "mapping": mapping or detect_mapping(sheets[0][1]), "sheets_used": used,
+                                            "sheets_skipped": skipped, "rows": total_rows,
+                                            "tender_records": len(tenders)},
+                   tenders=tenders, bids=[], companies=[])
+
+
+def _sheet_records(path: Path, sheet: str, headers: list[str], rows: list[list], mapping: dict[str, str],
+                   publisher: str, source_url: str) -> list[dict]:
     index = {h: i for i, h in enumerate(headers)}
     has_winner = "winner_name_as_published" in mapping
     has_status = "announced_status" in mapping
@@ -186,10 +249,11 @@ def to_package(path: str | Path, *, publisher: str, source_url: str = "", mappin
         named = has_winner and rec["winner_name_as_published"]
         if named and (not has_status or (contract_status and N.map_status(rec["announced_status"]) != "cancelled")):
             rec["announced_status"] = AWARDED_WITHOUT_STATUS  # a named supplier on a published contract list
-        notes = [f"open data file: {path.name}"]
+        notes = [f"open data file: {path.name}" + (f" / {sheet}" if sheet else "")]
         if not rec["tender_reference"] and rec["title"]:
             # the publisher released this row without a number: a stable internal key, labelled as such everywhere
-            basis = "|".join([publisher, rec["issuer"], rec["title"], rec["published_date"]])
+            basis = "|".join([publisher, sheet, rec["issuer"], rec["title"], rec["published_date"],
+                              rec["award_date"], rec["winner_name_as_published"]])
             rec["tender_reference"] = DERIVED_PREFIX + hashlib.sha256(basis.encode()).hexdigest()[:12].upper()
             notes.append("لا رقم منافسة في الملف المصدر: المرجع داخلي مشتق (OD-)")
         rec["bidders_name_count_public"] = ""
@@ -199,8 +263,7 @@ def to_package(path: str | Path, *, publisher: str, source_url: str = "", mappin
         for header, i in index.items():  # every original column stays with the record (sector, phase, ...)
             if header and header not in mapping.values() and i < len(row):
                 rec["src:" + header[:60]] = _cell(row[i])
+        if sheet:
+            rec["src:sheet"] = sheet
         tenders.append(rec)
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    return Package(sha256=digest, manifest={"source_file": path.name, "publisher": publisher, "mapping": mapping,
-                                            "rows": len(rows), "tender_records": len(tenders)},
-                   tenders=tenders, bids=[], companies=[])
+    return tenders

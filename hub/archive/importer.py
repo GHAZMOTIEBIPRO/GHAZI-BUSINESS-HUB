@@ -56,6 +56,8 @@ TENDER_COLUMNS = {"tender_reference", "title", "issuer", "city_or_location", "an
 BID_COLUMNS = {"tender_reference", "bidder_name_as_published", "bid_price_sar_as_published",
                "technical_or_award_result", "bid_status", "source_url"}
 MAX_PACKAGE_BYTES = 25_000_000
+# awards from these sources come from the publisher's own open data (not a third-party summary)
+OFFICIAL_SOURCES = {"etimad_open_data", "saudi_open_data"}
 
 
 class PackageError(ValueError):
@@ -197,7 +199,15 @@ def validate(pkg: Package, today: dt.date) -> Validated:
             "bidders_public_claimed": N.parse_int(raw.get("bidders_name_count_public")),
             "source_url": N.clean_text(raw.get("source_url")), "source_publisher": N.clean_text(raw.get("source_publisher")),
             "verification_notes": N.clean_text(raw.get("verification_notes")), "raw": raw,
+            "winner_cr": "",
         }
+        cr_text = N.clean_text(raw.get("winner_cr_as_published"))
+        if winner and cr_text:
+            cr = N.registry_number(cr_text)
+            if cr:
+                rec["winner_cr"] = cr
+            else:
+                reject("tenders", i, f"سجل تجاري للمورد غير صالح (ليس 10 أرقام): {cr_text[:20]}", raw, "warning")
         if rec["source_url"] and not rec["source_url"].startswith("https://"):
             reject("tenders", i, "رابط المصدر ليس HTTPS: حُذف الرابط", raw, "warning")
             rec["source_url"] = ""
@@ -444,13 +454,16 @@ class Importer:
                                         source_url=rec["source_url"], batch_id=batch_id))
         if rec["winner"]:
             company = self._company(s, batch_id, source_id, rec["winner"], counts, rec["city"])
+            if rec.get("winner_cr"):
+                self._attach_cr(s, batch_id, company, rec["winner_cr"], rec["source_url"], counts)
             award = s.scalars(select(TenderAward).where(TenderAward.tender_id == tender.id,
                                                         TenderAward.winner_name_raw == rec["winner"])).first()
             if award is None:
+                official = self.source_key in OFFICIAL_SOURCES
                 s.add(TenderAward(tender_id=tender.id, company_id=company.id, winner_name_raw=rec["winner"],
                                   award_amount_sar=rec["award_amount"], award_amount_raw=rec["award_amount_raw"],
                                   award_date=rec["award_date"], source_url=rec["source_url"], first_batch_id=batch_id,
-                                  verification_status="secondary_source_unverified"))
+                                  verification_status="official_open_data" if official else "secondary_source_unverified"))
                 counts["awards_new"] += 1
             else:
                 for fld, new in (("award_amount_sar", rec["award_amount"]), ("award_date", rec["award_date"])):
@@ -459,6 +472,35 @@ class Importer:
                         self._history(s, batch_id, "award", award.id, fld, old, new)
                         setattr(award, fld, new)
                         counts["awards_updated"] += 1
+
+    def _attach_cr(self, s: Session, batch_id: int, company: Company, cr: str, source_url: str, counts: Counter) -> None:
+        """A supplier's CR number published next to its name by an official source identifies the company.
+
+        Set only when the company has none and no other row holds it. Another row with the same number is reported for
+        a human merge (curation.merge_companies), never merged here. Every change is in change_history for rollback.
+        """
+        if company.cr_number == cr:
+            return
+        if company.cr_number:
+            counts["cr_conflicts"] += 1
+            s.add(VerificationEvent(entity_type="company", entity_id=company.id, event="cr_conflict",
+                                    result=f"published {cr}, held {company.cr_number}", source_url=source_url,
+                                    batch_id=batch_id))
+            return
+        other = s.scalars(select(Company.id).where(Company.cr_number == cr)).first()
+        if other is not None:
+            counts["cr_shared_with_other_name"] += 1
+            s.add(VerificationEvent(entity_type="company", entity_id=company.id, event="same_cr_as_company",
+                                    result=f"company={other} cr={cr}: review for a merge", source_url=source_url,
+                                    batch_id=batch_id))
+            return
+        self._history(s, batch_id, "company", company.id, "cr_number", None, cr)
+        self._history(s, batch_id, "company", company.id, "identity_status", company.identity_status, "registry_verified")
+        company.cr_number, company.identity_status = cr, "registry_verified"
+        s.add(VerificationEvent(entity_type="company", entity_id=company.id, event="cr_from_official_source",
+                                result=cr, source_url=source_url, batch_id=batch_id))
+        s.flush()
+        counts["companies_cr_verified"] += 1
 
     def _upsert_bid(self, s: Session, batch_id: int, source_id: int, rec: dict, counts: Counter) -> None:
         tender = s.scalars(select(ProcurementTender).where(ProcurementTender.official_reference == rec["ref"])).first()
@@ -527,7 +569,8 @@ class Importer:
             out = Counter()
             # 1) restore overwritten values, newest first
             for h in s.scalars(select(ChangeHistory).where(ChangeHistory.batch_id == batch_id).order_by(ChangeHistory.id.desc())):
-                model = {"tender": ProcurementTender, "bid": TenderBid, "award": TenderAward}.get(h.entity_type)
+                model = {"tender": ProcurementTender, "bid": TenderBid, "award": TenderAward,
+                         "company": Company}.get(h.entity_type)
                 row = s.get(model, h.entity_id) if model else None
                 if row is not None:
                     setattr(row, h.field, _coerce(model, h.field, h.old_value))

@@ -8,7 +8,8 @@ on:
     - cron: "41 5 * * 0"     # weekly, Sunday 08:41 Riyadh: flags new Etimad open datasets (runs from the default branch)
   push:
     branches: [claude/tender-archive]
-    paths: [scripts/probe_procurement_sources.py, scripts/probe_sites_and_archive.py, .github/workflows/procurement-probe.yml]
+    paths: [scripts/probe_procurement_sources.py, scripts/probe_sites_and_archive.py, scripts/archive_proof_counts.py,
+            hub/archive/**, .github/workflows/procurement-probe.yml]
 permissions:
   contents: read
 jobs:
@@ -34,3 +35,47 @@ jobs:
           name: procurement-probe
           path: procurement_probe.txt
           retention-days: 30
+
+  archive-proof:
+    # Real official open data through the hub's own importer, on a throw-away PostgreSQL: counts only in the log.
+    # The file is the 2019-2021 procurement list of the old national open data portal (data.gov.sa), read from the
+    # Internet Archive's public copy (the portal is not reachable outside the Kingdom). Nothing is kept after the job.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hub
+          POSTGRES_PASSWORD: hub-proof
+          POSTGRES_DB: hub_proof
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hub -d hub_proof" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      HUB_ENV: staging
+      HUB_SECRET_KEY: proof-only
+      HUB_DATABASE_URL: postgresql://hub:hub-proof@127.0.0.1:5432/hub_proof
+      FILE_URL: https://web.archive.org/web/20211204002823id_/https://data.gov.sa/Data/dataset/c0ffd6e6-e12d-4394-886b-fa9092f89daa/resource/29e806d2-8d37-4503-b409-ce848e8a6351/download/procurement-data-2019-2020-2021.xls
+      SOURCE_URL: https://web.archive.org/web/20211204002823/https://data.gov.sa/Data/dataset/c0ffd6e6-e12d-4394-886b-fa9092f89daa/resource/29e806d2-8d37-4503-b409-ce848e8a6351/download/procurement-data-2019-2020-2021.xls
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Fetch the archived official file
+        run: |
+          curl -sSfL --max-time 120 -o "$RUNNER_TEMP/procurement-data-2019-2020-2021.xls" "$FILE_URL"
+          sha256sum "$RUNNER_TEMP/procurement-data-2019-2020-2021.xls"
+      - name: Validate, stage, re-run (idempotent) — summary counts only
+        run: |
+          python -m hub.archive.cli migrate
+          PUB="البوابة الوطنية للبيانات المفتوحة (data.gov.sa) — procurement-data-2019-2020-2021، نسخة أرشيف الإنترنت 2021-12-04"
+          python -m hub.archive.cli import "$RUNNER_TEMP/procurement-data-2019-2020-2021.xls" --source saudi_open_data \
+            --publisher "$PUB" --source-url "$SOURCE_URL" --validate
+          python -m hub.archive.cli import "$RUNNER_TEMP/procurement-data-2019-2020-2021.xls" --source saudi_open_data \
+            --publisher "$PUB" --source-url "$SOURCE_URL" --staging
+          python -m hub.archive.cli import "$RUNNER_TEMP/procurement-data-2019-2020-2021.xls" --source saudi_open_data \
+            --publisher "$PUB" --source-url "$SOURCE_URL" --staging
+          python scripts/archive_proof_counts.py | tee -a "$GITHUB_STEP_SUMMARY"
