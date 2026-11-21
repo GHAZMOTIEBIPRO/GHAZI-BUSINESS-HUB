@@ -1,10 +1,10 @@
 """Public intelligence must never leak private procurement archive content."""
 from __future__ import annotations
 
+from conftest import new_client
 from hub.archive.models import Company, ProcurementIssuer, ProcurementSource, ProcurementTender, TenderAward
 from hub.daall_mcp import safe_source_url
 from hub.intelligence import local_companies, local_company_projects, local_tenders
-from conftest import new_client
 
 
 def _seed(session):
