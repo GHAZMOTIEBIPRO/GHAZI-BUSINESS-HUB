@@ -242,3 +242,6 @@ ul.notice{padding-inline-start:2rem}
 @media (max-width:950px){.intel-info-row{grid-template-columns:repeat(2,minmax(0,1fr))}.intel-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:680px){.intel-hero>.wrap{padding-block:1.8rem}.intel-searchbar{grid-template-columns:1fr}.intel-searchbar .btn-primary{width:100%}.intel-facts,.intel-info-row{grid-template-columns:1fr 1fr}.intel-panel{padding:.95rem}.intel-result-side{width:100%;justify-content:space-between}}
 @media (max-width:390px){.intel-facts,.intel-info-row{grid-template-columns:1fr}}
+
+.intel-home-promo{background:linear-gradient(120deg,#071c32,#153958);color:#fff;border-color:#25506d;padding:1.5rem}
+.intel-home-copy{color:#dfebf6}.intel-home-disclosure{color:#b9ccdf;margin-top:.75rem}
