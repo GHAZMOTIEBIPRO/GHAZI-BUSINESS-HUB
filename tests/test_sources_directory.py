@@ -99,3 +99,37 @@ def test_disabled_channels_are_hidden_from_the_public_table(app, session):
     table = page.split('id="channelsTable"')[1].split("</table>")[0]
     assert "تداول السعودية" not in table
     assert 'id="src-saudi-exchange"' in page, "the directory entry itself stays"
+
+
+def test_national_source_coverage_and_filters():
+    records = directory.load()["sources"]
+    keys = {entry["key"] for entry in records}
+    assert len(records) >= 30
+    assert {"aramco-contracting", "neom-suppliers", "nwc-vendors", "sec-contractors",
+            "sabic-suppliers", "redsea-suppliers", "sar-suppliers",
+            "rua-madinah-suppliers"} <= keys
+    for entry in records:
+        if entry["key"] in keys - {"etimad", "rcjy-yanbu", "rcrc-riyadh", "amanat",
+                                    "nhc", "roshn", "dgda", "jeddah-central",
+                                    "yanbu-operators", "saudi-exchange", "gastat-cci",
+                                    "momah-opendata", "national-open-data", "sca-muqawil",
+                                    "momah-classification", "modon"}:
+            assert entry["automation"] == "none"
+            assert entry["rights"] == "link_only", "supplier directory is not a public data license"
+    tabuk = {entry["key"] for entry in directory.sources("تبوك")}
+    assert "neom-suppliers" in tabuk and "qiddiya-suppliers" not in tabuk
+    madinah = {entry["key"] for entry in directory.sources("المدينة المنورة")}
+    assert "rua-madinah-suppliers" in madinah
+    assert directory.page_context("تبوك", "")["city"] == "تبوك"
+    assert directory.page_context("مدينة-غير-مدعومة", "")["city"] == "all"
+
+
+def test_national_city_selector_preserves_category(app):
+    client = new_client(app)
+    page = client.get("/sources?city=تبوك&cat=developers").text
+    assert 'id="nationalCity"' in page
+    assert 'value="تبوك" selected' in page
+    assert 'name="cat" value="developers"' in page
+    assert 'id="src-neom-suppliers"' in page
+    assert 'id="src-qiddiya-suppliers"' not in page
+    assert "موقع الجهة — شروط النشر غير مؤكدة" in page
