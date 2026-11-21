@@ -43,6 +43,21 @@ def main():
         tools = out.get("result", {}).get("tools", [])
         print("tools", json.dumps([{"name": x["name"], "schema": x.get("inputSchema", {})}
                                    for x in tools], ensure_ascii=False))
+        data = c.post(URL, headers=h, json={"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                                          "params": {"name": "get_tender", "arguments": {"reference_no": "260439001976"}}})
+        result = parse(data)
+        content = result.get("result", {}).get("content", [])
+        first_text = next((x.get("text", "") for x in content if x.get("type") == "text"), "")
+        try:
+            parsed = json.loads(first_text)
+            print("tender_result_shape", json.dumps({"root_type": type(parsed).__name__,
+                "keys": list(parsed)[:60] if isinstance(parsed, dict) else [],
+                "item_type": type(parsed[0]).__name__ if isinstance(parsed, list) and parsed else "n/a",
+                "content_size": len(first_text)}, ensure_ascii=False))
+        except ValueError:
+            print("tender_response_shape", json.dumps({"content_length": len(first_text),
+                "excerpt": first_text[:180].replace("\\n", " ")}, ensure_ascii=False))
+
 
 
 if __name__ == "__main__":
