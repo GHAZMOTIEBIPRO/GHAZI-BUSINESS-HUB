@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, selectinload
 from ..models import TRADES, AuditLog
 from . import curation, open_data
 from . import normalize as N
+from .catalog import batch_label, catalog, dataset, import_status
 from .curation import CurationError
 from .importer import MAX_PACKAGE_BYTES, Importer, PackageError
 from .models import (
@@ -203,11 +204,12 @@ def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
         db.commit()
         sources = db.scalars(select(ProcurementSource).options(selectinload(ProcurementSource.licenses))
                              .order_by(ProcurementSource.automation_enabled.desc(), ProcurementSource.id)).all()
-        return render(request, "archive_sources.html", db, user, sources=sources, **LABELS)
+        return render(request, "archive_sources.html", db, user, sources=sources, catalog=catalog(),
+                      imported=import_status(db), **LABELS)
 
     @app.get("/admin/archive/import", response_class=HTMLResponse)
     def archive_import_form(request: Request, db: Session = Depends(get_db), user=Depends(admin_only)):
-        return render(request, "archive_import.html", db, user, report=None, error=None, upload_sources=UPLOAD_SOURCES, **LABELS)
+        return render(request, "archive_import.html", db, user, report=None, error=None, upload_sources=UPLOAD_SOURCES, catalog=catalog(), **LABELS)
 
     @app.post("/admin/archive/import", dependencies=[Depends(verify_csrf)])
     async def archive_import(request: Request, db: Session = Depends(get_db), user=Depends(admin_only)):
@@ -216,7 +218,7 @@ def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
         mode = form.get("mode") or "dry-run"
 
         def fail(msg, status=400):
-            return render(request, "archive_import.html", db, user, status=status, report=None, error=msg, upload_sources=UPLOAD_SOURCES, **LABELS)
+            return render(request, "archive_import.html", db, user, status=status, report=None, error=msg, upload_sources=UPLOAD_SOURCES, catalog=catalog(), **LABELS)
         if upload is None or not hasattr(upload, "read"):
             return fail("أرفق ملف الحزمة (ZIP)")
         raw = await upload.read(MAX_PACKAGE_BYTES + 1)
@@ -225,6 +227,11 @@ def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
         from .. import db as dbm
         suffix = Path(str(getattr(upload, "filename", "") or "")).suffix.lower()
         source_key = str(form.get("source") or "research_package_2026_11_13")
+        chosen = dataset(str(form.get("dataset") or ""))
+        if chosen is not None:  # an official Etimad dataset: its publisher, link and label come from the catalog
+            if suffix not in (".xlsx", ".csv"):
+                return fail("مجموعات اعتماد المفتوحة تُرفع بملفها XLSX أو CSV كما نُزّل")
+            source_key = "etimad_open_data"
         if source_key not in UPLOAD_SOURCES:
             return fail("اختر مصدرًا مسجلًا للرفع")
         importer = Importer(dbm.SessionLocal, created_by=f"web:{user.email}", source_key=source_key)
@@ -233,12 +240,16 @@ def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
             path.write_bytes(raw)
             try:
                 if suffix in (".xlsx", ".csv"):
-                    publisher = N.clean_text(str(form.get("publisher") or ""))[:200]
+                    if chosen is not None:
+                        publisher, source_url = catalog()["publisher"], chosen["url"]
+                    else:
+                        publisher = N.clean_text(str(form.get("publisher") or ""))[:200]
+                        source_url = N.clean_text(str(form.get("source_url") or ""))[:500]
                     if not publisher:
                         return fail("ملف بيانات مفتوحة: اكتب اسم الجهة المالكة للملف")
-                    path = open_data.to_package(path, publisher=publisher,
-                                                source_url=N.clean_text(str(form.get("source_url") or ""))[:500])
-                    path.manifest["source_file"] = N.clean_text(str(upload.filename))[:200]
+                    path = open_data.to_package(path, publisher=publisher, source_url=source_url)
+                    path.manifest["source_file"] = (batch_label(chosen) if chosen is not None
+                                                    else N.clean_text(str(upload.filename))[:200])
                 if mode == "staging":
                     report = importer.stage(path)
                 elif mode == "validate":
@@ -247,7 +258,7 @@ def register(app, *, render, staff, admin_only, verify_csrf, get_db, redirect):
                     report = importer.dry_run(path)
             except PackageError as exc:
                 return fail(str(exc))
-        return render(request, "archive_import.html", db, user, report=report, error=None, upload_sources=UPLOAD_SOURCES, **LABELS)
+        return render(request, "archive_import.html", db, user, report=report, error=None, upload_sources=UPLOAD_SOURCES, catalog=catalog(), **LABELS)
 
     @app.get("/admin/archive/batches/{batch_id}", response_class=HTMLResponse)
     def archive_batch(batch_id: int, request: Request, db: Session = Depends(get_db), user=Depends(staff)):

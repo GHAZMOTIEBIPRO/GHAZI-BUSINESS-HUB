@@ -36,10 +36,21 @@ STATUS_MAP = {
     "قيد الفحص": "closed",
     "تحت الفحص": "closed",
     "ملغى": "cancelled",
+    "تم الإلغاء": "cancelled",
+    "قيد التقييم": "closed",
+    "تحت التقييم": "closed",
+    "بانتظار الترسية": "closed",
+    # English wording of the Etimad open data files (compared lower-case)
     "awarded": "awarded",
+    "award": "awarded",
     "open": "open",
+    "active": "open",
+    "published": "announced",
     "closed": "closed",
+    "under evaluation": "closed",
+    "evaluation": "closed",
     "cancelled": "cancelled",
+    "canceled": "cancelled",
 }
 UNKNOWN_LOCATION = {"", "غير محددة في الملخص", "غير محدد", "غير معلوم"}
 CITY_ALIASES = {"ينبع الصناعية": "ينبع"}  # same city for the region lookup; the published text is kept as-is
@@ -107,7 +118,8 @@ def parse_int(value: str | None) -> int | None:
 
 
 def map_status(text: str | None) -> str:
-    return STATUS_MAP.get(clean_text(text), "unknown")
+    cleaned = clean_text(text)
+    return STATUS_MAP.get(cleaned) or STATUS_MAP.get(cleaned.lower(), "unknown")
 
 
 def city_region(text: str | None) -> tuple[str | None, str | None]:

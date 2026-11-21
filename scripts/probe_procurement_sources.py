@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import html
 import io
+import os
 import re
 import sys
 import urllib.parse
@@ -178,6 +179,21 @@ def list_library(url: str = "https://portal.etimad.sa/en-us/ecollaboration/index
     print(f"\n== open data library: {len(seen)} datasets read, {len(wanted)} Tenders/Contracts")
     for gid, (category, body, created, href) in sorted(wanted, key=lambda kv: kv[1][0]):
         print(f"   [{category}] {body} | id={gid} created={created} | {href}")
+    import json
+    from pathlib import Path
+    known = {d["id"] for d in json.loads((Path(__file__).resolve().parents[1] / "hub/archive/data/etimad_open_datasets.json")
+                                          .read_text(encoding="utf-8"))["datasets"]}
+    new = [(gid, v) for gid, v in wanted if gid not in known]
+    print(f"\n== not yet in hub/archive/data/etimad_open_datasets.json: {len(new)}")
+    for gid, (category, body, created, href) in new:
+        print(f"   NEW [{category}] {body[:120]} | id={gid} created={created} | {href}")
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as fh:
+            fh.write(f"### Etimad open data library\n{len(seen)} datasets read, {len(wanted)} tenders/contracts, "
+                     f"{len(new)} not in the catalog\n")
+            for gid, (category, body, _created, href) in new:
+                fh.write(f"- NEW {category}: {body[:120]} — {href} (id {gid})\n")
 
 
 def main() -> int:

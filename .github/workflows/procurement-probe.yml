@@ -1,9 +1,11 @@
-# Log-only: Etimad open data library and policy, Etimad usage policy, API portal terms, the national open data
-# platform and the Royal Commission sites, as seen from a GitHub runner. Nothing is stored or published.
-# Kept apart from sources-probe.yml (PR #4) so the two branches merge in either order.
+# Log-only: reads the public Etimad open data library (as an anonymous visitor, no download) and lists every
+# tenders/contracts dataset, flagging the ones missing from hub/archive/data/etimad_open_datasets.json in the job
+# summary. Nothing is stored or published. Kept apart from sources-probe.yml (PR #4) so the branches merge either way.
 name: procurement-probe
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "41 5 * * 0"     # weekly, Sunday 08:41 Riyadh: flags new Etimad open datasets (runs from the default branch)
   push:
     branches: [claude/tender-archive]
     paths: [scripts/probe_procurement_sources.py, .github/workflows/procurement-probe.yml]

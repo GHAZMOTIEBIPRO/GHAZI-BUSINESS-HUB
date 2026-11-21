@@ -15,5 +15,18 @@
     <td class="small">{{ s.notes }}{% if s.evidence_url %} <a href="{{ s.evidence_url }}" rel="noopener noreferrer nofollow" target="_blank">الدليل</a>{% endif %}
       {% for l in s.licenses %}<div class="muted">الرخصة: {{ l.license_name }} — {{ l.status }}</div>{% endfor %}</td></tr>{% endfor %}
   </tbody></table></div>
+
+  <h2 class="mt" id="etimadCatalog">مجموعات اعتماد المفتوحة (منافسات، ترسيات، عقود) — {{ catalog.datasets|length }} مجموعة</h2>
+  <p class="small muted">قائمة المكتبة العامة للمركز الوطني لنظم الموارد الحكومية كما قُرئت في {{ catalog.listed_at }}.
+    سياسة المركز: إتاحة «للجميع ودون حاجة للتسجيل»، «مجاناً»، مع «الإشارة الى حقوق المركز» (<a href="{{ catalog.policy_url }}" rel="noopener noreferrer nofollow" target="_blank">نص السياسة</a>).
+    الملفات على open.data.gov.sa ولا تُفتح من الخوادم السحابية: نزّل الملف من المتصفح ثم ارفعه من
+    {% if user.role=='admin' %}<a href="/admin/archive/import">صفحة الاستيراد</a>{% else %}صفحة الاستيراد (للمدير){% endif %} واختر المجموعة.
+    الأولوية 1 فيها اسم المورد المرسى عليه والقيمة.</p>
+  <div class="table-wrap"><table id="catalogTable"><thead><tr><th>الأولوية</th><th>المجموعة</th><th>الحقول</th><th>الرابط</th><th>في الأرشيف</th></tr></thead><tbody>
+  {% for d in catalog.datasets|sort(attribute='priority') %}{% set st = imported.get(d.id) %}
+    <tr id="ds-{{ d.id }}"><td class="num">{{ d.priority }}</td><td>{{ d.title }} <span class="muted small">({{ d.category }})</span></td><td class="small">{{ d.fields }}</td>
+    <td><a href="{{ d.url }}" rel="noopener noreferrer nofollow" target="_blank">open.data.gov.sa</a></td>
+    <td>{% if st %}<a class="badge b-ok" href="/admin/archive/batches/{{ st.batch_id }}">دفعة #{{ st.batch_id }} ({{ st.status }})</a>{% else %}<span class="badge b-bad">لم يُرفع</span>{% endif %}</td></tr>
+  {% endfor %}</tbody></table></div>
 </div>
 {% endblock %}

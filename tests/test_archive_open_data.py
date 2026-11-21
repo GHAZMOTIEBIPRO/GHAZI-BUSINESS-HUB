@@ -115,6 +115,57 @@ def test_rows_without_a_number_get_a_labelled_internal_key_and_keep_their_column
     assert "المدارس" in t.title or "مدارس" in t.title
 
 
+MONTHLY_HEADERS = ["Entity Name", "Sector", "Tender Title", "Status", "Supplier Name", "Tender Value", "Creation Date",
+                   "Award Date"]
+MONTHLY_ROWS = [
+    ["جهة اختبار للتعليم", "التعليم", "صيانة وترميم مدارس اختبار", "Awarded", "مؤسسة اختبار للمقاولات", 2350000,
+     dt.datetime(2025, 1, 5), dt.datetime(2025, 2, 10)],
+    ["جهة اختبار بلدية", "البلديات", "توريد وتركيب أسقف جبسية اختبار", "Under Evaluation", "", 0,
+     dt.datetime(2025, 2, 1), None],
+    ["جهة اختبار بلدية", "البلديات", "أعمال دهانات اختبار", "Cancelled", "", "", dt.datetime(2025, 2, 3), None],
+]
+
+
+def test_catalog_lists_the_official_datasets():
+    from hub.archive import catalog
+    data = catalog.catalog()
+    assert len(data["datasets"]) == 34 and data["by_id"]["0409048941305"]["priority"] == 1
+    assert all(d["url"].startswith("https://open.data.gov.sa/") for d in data["datasets"])
+    assert len({d["id"] for d in data["datasets"]}) == 34
+
+
+def test_upload_by_catalog_dataset_records_publisher_link_and_awards(app, database, tmp_path, session):
+    path = xlsx(tmp_path / "feb2025.xlsx", MONTHLY_HEADERS, MONTHLY_ROWS)
+    make_staff(session, "boss@example.sa", "admin")
+    c = new_client(app)
+    login(c, "boss@example.sa", "staff-password-1")
+    assert "datasetSelect" in c.get("/admin/archive/import").text
+    sources = c.get("/admin/archive/sources")
+    assert "catalogTable" in sources.text and 'id="ds-0409048941305"' in sources.text and "لم يُرفع" in sources.text
+    token = csrf_of(c, "/admin/archive/import")
+    zip_try = c.post("/admin/archive/import", data={"csrf": token, "mode": "staging", "dataset": "0409048941305"},
+                     files={"file": ("x.zip", b"PK", "application/zip")})
+    assert zip_try.status_code == 400
+    ok = c.post("/admin/archive/import", data={"csrf": token, "mode": "staging", "dataset": "0409048941305",
+                                               "source": "research_package_2026_11_13"},
+                files={"file": ("download.xlsx", path.read_bytes(), "application/octet-stream")})
+    assert ok.status_code == 200 and "importReport" in ok.text, ok.text[:400]
+    tenders = {t.title: t for t in session.scalars(select(ProcurementTender))}
+    awarded = tenders["صيانة وترميم مدارس اختبار"]
+    assert (awarded.status, awarded.lifecycle, awarded.award_date) == ("awarded", "C_awarded", dt.date(2025, 2, 10))
+    assert [(a.winner_name_raw, a.award_amount_sar) for a in awarded.awards] == [("مؤسسة اختبار للمقاولات", 2350000.0)]
+    assert awarded.source_url == "https://open.data.gov.sa/en/datasets/view/9e99c257-76a7-4f77-b0d5-9f15dfd1800c"
+    assert awarded.source.key == "etimad_open_data" and "اعتماد" in awarded.source_publisher
+    assert awarded.official_reference.startswith("OD-") and awarded.raw["src:Sector"] == "التعليم"
+    assert tenders["توريد وتركيب أسقف جبسية اختبار"].status == "closed"
+    assert tenders["أعمال دهانات اختبار"].status == "cancelled"
+    assert session.scalar(select(func.count(TenderAward.id))) == 1 and not any(t.publish_allowed for t in tenders.values())
+    batch = session.scalars(select(ImportBatch)).one()
+    assert batch.label == "0409048941305 — Tenders Data by Feb 2025"
+    after = c.get("/admin/archive/sources").text
+    assert f'href="/admin/archive/batches/{batch.id}"' in after
+
+
 def test_unrecognised_headers_are_refused_with_what_was_found(tmp_path):
     path = xlsx(tmp_path / "x.xlsx", ["العمود الأول", "العمود الثاني"], [["a", "b"]])
     with pytest.raises(PackageError, match="title.*العمود الأول"):
