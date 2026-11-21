@@ -14,6 +14,7 @@
 | IBM Plex Sans Arabic (Fontsource 5.2.5) | — | SIL OFL 1.1 | self-hosted font, licence in `hub/static/fonts/LICENSE-OFL.txt` |
 | PyJWT | 2.10.1 | MIT | verifies GitHub Actions OIDC tokens for the scheduled refresh (`hub/oidc.py`) |
 | cryptography | 45.0.7 | Apache-2.0 / BSD | RS256 signature checks for PyJWT |
+| Alembic | 1.16.5 | MIT | migrations of the procurement archive (`migrations/`, `hub/archive/migrate.py`) |
 | pytest / ruff | 8.4.2 / 0.13.3 | MIT | dev only |
 | Playwright + Chromium | preinstalled | Apache-2.0 | UI tests only |
 | LibreOffice (headless) | system | MPL-2.0 | build-time recalculation + tests only; not shipped |

@@ -1,0 +1,42 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}منافسة {{ t.official_reference }} — الأرشيف{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><p><a href="/admin/archive">← الأرشيف</a></p><h1>{{ t.title }}</h1>
+    <p><span class="badge {{ 'b-ok' if t.status=='awarded' else 'b-lead' }}">{{ TENDER_STATUS.get(t.status) }}</span>
+      <span class="badge b-lead">{{ LIFECYCLE.get(t.lifecycle) }}</span>
+      <span class="badge b-bad" id="rightsBadge">{{ RIGHTS.get(t.source_rights_status) }} · {{ VISIBILITY.get(t.visibility) }}</span></p></div>
+  <div class="grid g2">
+    <section class="card"><h2>بيانات المنافسة</h2><dl class="kv">
+      <dt>الرقم الرسمي</dt><dd class="num">{{ t.official_reference }}</dd>
+      <dt>الجهة الطارحة</dt><dd>{{ m.val(t.issuer.name if t.issuer else '') }}</dd>
+      <dt>المدينة / المنطقة</dt><dd>{{ m.val(t.city) }} / {{ m.val(t.region) }}</dd>
+      <dt>نوع الأعمال</dt><dd>{{ t.work_types|join('، ') if t.work_types else '—' }}</dd>
+      <dt>الحالة كما نُشرت</dt><dd>{{ m.val(t.status_as_published) }}</dd>
+      <dt>تاريخ الإعلان</dt><dd class="num">{{ m.val(t.published_date) }}</dd>
+      <dt>آخر موعد للتقديم</dt><dd class="num">{{ m.val(t.submission_deadline) }}</dd>
+      <dt>تاريخ الترسية</dt><dd class="num">{{ m.val(t.award_date) }}</dd>
+      <dt>القيمة التقديرية</dt><dd class="num">{{ money(t.estimated_value_sar) if t.estimated_value_sar is not none else 'غير منشورة' }}</dd>
+      <dt>عدد العروض المعلن</dt><dd class="num">{{ t.offer_count_claimed if t.offer_count_claimed is not none else 'غير معلوم' }}</dd>
+      <dt>اكتمال البيانات</dt><dd class="num">{{ (t.completeness*100)|round|int }}%</dd>
+      <dt>آخر تحقق</dt><dd class="num">{{ ksa(t.last_verified_at) if t.last_verified_at else 'لم يُتحقق رسميًا بعد' }}</dd>
+    </dl></section>
+    <section class="card"><h2>الترسية</h2>
+      {% for a in t.awards %}<p><a href="/admin/archive/companies/{{ a.company_id }}"><b>{{ a.winner_name_raw }}</b></a></p>
+        <p class="num">قيمة الترسية: {{ money(a.award_amount_sar) if a.award_amount_sar is not none else 'غير منشورة' }} · {{ m.val(a.award_date) }}</p>
+        <p class="small muted">التحقق: {{ 'من مصدر ثانوي — لم يُطابق مع اعتماد بعد' if a.verification_status=='secondary_source_unverified' else a.verification_status }}</p>
+      {% else %}<p class="muted" id="noAward">لا فائز مسجل. {% if t.status != 'awarded' %}المنافسة غير مرساة وقت الجمع.{% else %}لم يُنشر اسم الفائز.{% endif %}</p>{% endfor %}
+      <h3>المصدر</h3><p class="small">{{ t.source_publisher or '—' }}{% if t.source_url %} · <a href="{{ t.source_url }}" rel="noopener noreferrer nofollow" target="_blank">الرابط الأصلي</a>{% endif %}</p>
+      {% if t.verification_notes %}<p class="small muted">{{ t.verification_notes }}</p>{% endif %}
+    </section>
+  </div>
+  <h2 class="mt">المتقدمون المعروفون ({{ bids|length }}{% if t.offer_count_claimed is not none %} من {{ t.offer_count_claimed }} معلن{% endif %})</h2>
+  {% if not t.bid_list_complete %}<p class="small muted" id="partialNote">القائمة جزئية: هذه الأسماء الظاهرة علنًا فقط وليست كل المتقدمين.</p>{% endif %}
+  <div class="table-wrap"><table id="bidsTable"><thead><tr><th>ترتيب السعر بين المنشور</th><th>المتقدم (كما نُشر)</th><th>قيمة العرض</th><th>النتيجة الفنية</th><th>الحالة</th></tr></thead><tbody>
+  {% for b in bids %}<tr><td class="num">{{ b.price_rank_among_published or '—' }}</td><td><a href="/admin/archive/companies/{{ b.company_id }}">{{ b.bidder_name_raw }}</a></td>
+    <td class="num">{{ money(b.bid_amount_sar) if b.bid_amount_sar is not none else 'غير منشورة' }}</td><td>{{ m.val(b.technical_result) }}</td><td>{{ m.val(b.bid_status) }}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">لا أسماء متقدمين منشورة لهذه المنافسة.</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

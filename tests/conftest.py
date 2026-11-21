@@ -21,12 +21,21 @@ PG_URL = os.environ.get("HUB_TEST_DATABASE_URL")  # set to run the whole suite o
 
 @pytest.fixture()
 def database(tmp_path):
+    from sqlalchemy import text
+
+    from hub.archive.migrate import upgrade as archive_upgrade
+    from hub.archive.models import ArchiveBase
+
     if PG_URL:
         dbm.configure(PG_URL)
+        ArchiveBase.metadata.drop_all(dbm.engine)
+        with dbm.engine.begin() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS alembic_version_archive"))
         dbm.Base.metadata.drop_all(dbm.engine)
     else:
         dbm.configure(f"sqlite:///{tmp_path / 'test.db'}")
     dbm.init_db()
+    archive_upgrade(dbm.engine)  # archive tables come from the Alembic migration, as in production
     with dbm.SessionLocal() as s:
         jobs.seed(s)
     limiter.reset()

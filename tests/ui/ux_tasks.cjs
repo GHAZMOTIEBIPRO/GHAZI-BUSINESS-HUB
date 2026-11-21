@@ -150,8 +150,50 @@ async function adminAndCalc(browser) {
   await ctx.close();
 }
 
+// private procurement archive (staff only): every screen at 390px and 1440px, and the D entry form on a phone
+const ARCHIVE_PAGES = ['/admin/archive', '/admin/archive/companies', '/admin/archive/sources', '/admin/archive/subcontracts',
+  '/admin/archive/insights', '/admin/archive/import'];
+async function archive(browser, label, viewport) {
+  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1, locale: 'ar-SA' });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto(BASE + '/login');
+  await page.fill('input[name=email]', 'admin@demo.example.sa');
+  await page.fill('input[name=password]', 'demo-password-123');
+  await page.click('form[action="/login"] button[type=submit]');
+  for (const p of ARCHIVE_PAGES) {
+    const resp = await page.goto(BASE + p);
+    rec(resp.status() === 200, `${label} ${p} loads for admin`, `status ${resp.status()}`);
+    const facts = await page.evaluate(() => ({
+      overflow: document.documentElement.scrollWidth - window.innerWidth,
+      unlabeled: [...document.querySelectorAll('input:not([type=hidden]),select,textarea')].filter(el => !el.closest('label')
+        && !el.getAttribute('aria-label') && !(el.id && document.querySelector(`label[for="${el.id}"]`))).length,
+      h1: document.querySelectorAll('h1').length, noindex: !!document.querySelector('meta[name=robots][content*=noindex]') }));
+    rec(facts.overflow <= 1 && facts.unlabeled === 0 && facts.h1 === 1 && facts.noindex,
+      `${label} ${p} fits, labelled, one h1, noindex`, JSON.stringify(facts));
+    await page.screenshot({ path: path.join(SHOTS, `archive_${label}${p.replace(/\//g, '_')}.png`), fullPage: true });
+  }
+  if (viewport.width < 500) {
+    await page.goto(BASE + '/admin/archive/subcontracts');
+    await page.fill('#subcontractForm input[name=title]', `أعمال جبس باطن (اختبار واجهة ${stamp})`);
+    await page.fill('#subcontractForm input[name=main_contractor_name]', 'مقاول رئيسي (اختبار)');
+    await page.selectOption('#subcontractForm select[name=evidence_kind]', 'company_announcement');
+    await page.fill('#subcontractForm input[name=evidence_url]', 'https://example.sa/announcement');
+    await page.click('#subcontractForm button[type=submit]');
+    rec(await page.locator(`text=اختبار واجهة ${stamp}`).count() === 1, 'subcontract entered with evidence (mobile)');
+    rec(await page.locator('text=تحتاج مراجعًا آخر').count() >= 1, 'own entry cannot be confirmed by its author');
+    await page.screenshot({ path: path.join(SHOTS, `archive_${label}_subcontract_entered.png`), fullPage: true });
+  }
+  rec(errors.length === 0, `${label} archive: no console errors`, errors.slice(0, 3).join(' | '));
+  await ctx.close();
+}
+
 (async () => {
   const browser = await chromium.launch();
+  await archive(browser, 'm390', { width: 390, height: 844 });
+  await archive(browser, 'd1440', { width: 1440, height: 900 });
   await audit(browser, 'm390', { width: 390, height: 844 });
   await audit(browser, 'd1440', { width: 1440, height: 900 });
   await journey(browser);

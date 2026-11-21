@@ -1,0 +1,43 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}فرص الباطن المؤكدة — الأرشيف{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><p><a href="/admin/archive">← الأرشيف</a></p><h1>فرص الباطن المؤكدة (الفئة D)</h1>
+    <p class="muted small" id="dRule">المنافسة المرساة ليست تلقائيًا فرصة باطن. تُدخل الفرصة هنا فقط بدليل منشور أو موثق من المقاول الرئيسي،
+      ولا تُعد مؤكدة حتى يراجعها شخص ثانٍ غير الذي أدخلها. كل الفرص خاصة بفريق المنصة.</p></div>
+  <div class="actions"><a class="btn btn-outline" href="/admin/archive/subcontracts">الكل</a>
+    {% for k, label in SUBCONTRACT_REVIEW.items() %}<a class="btn btn-outline" href="/admin/archive/subcontracts?review={{ k }}">{{ label }} ({{ counts.get(k, 0) }})</a>{% endfor %}</div>
+
+  <div class="table-wrap mt"><table id="subcontractsTable"><thead><tr><th>الفرصة</th><th>المقاول الرئيسي</th><th>المدينة</th><th>آخر موعد</th><th>الدليل</th><th>المراجعة</th><th></th></tr></thead><tbody>
+  {% for o in rows %}<tr><td>{{ o.title }}{% if o.trade %}<div class="small muted">{{ o.trade }}</div>{% endif %}</td>
+    <td>{% if o.main_contractor %}<a href="/admin/archive/companies/{{ o.main_contractor.id }}">{{ o.main_contractor_name }}</a>{% else %}{{ o.main_contractor_name }}{% endif %}</td>
+    <td>{{ m.val(o.city) }}</td><td class="num">{{ m.val(o.response_deadline) }}{% if o.status=='closed' %} <span class="badge b-bad">منتهية</span>{% endif %}</td>
+    <td class="small"><a href="{{ o.evidence_url }}" rel="noopener noreferrer nofollow" target="_blank">{{ EVIDENCE_KINDS.get(o.evidence_kind) }}</a></td>
+    <td><span class="badge {{ 'b-ok' if o.review_status=='confirmed' else 'b-bad' }}">{{ SUBCONTRACT_REVIEW.get(o.review_status) }}</span></td>
+    <td>{% if o.review_status=='pending_second_review' and o.created_by_user_id != user.id %}
+      <form class="row-between" method="post" action="/admin/archive/subcontracts/{{ o.id }}/review">{{ m.csrf_field() }}
+        <button class="btn btn-primary" name="decision" value="confirmed" type="submit">تأكيد</button>
+        <button class="btn btn-outline" name="decision" value="rejected" type="submit">رفض</button></form>
+      {% elif o.review_status=='pending_second_review' %}<span class="small muted">أدخلتها أنت — تحتاج مراجعًا آخر</span>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="7" class="muted">لا توجد فرص باطن مدخلة.</td></tr>{% endfor %}
+  </tbody></table></div>
+
+  <section class="card mt" id="subcontractForm"><h2>إدخال فرصة بدليل</h2>
+    {% if error %}<p class="flash" role="alert" id="formError">{{ error }}</p>{% endif %}
+    <form class="stack" method="post" action="/admin/archive/subcontracts">{{ m.csrf_field() }}
+      <label>عنوان الفرصة<input type="text" name="title" required maxlength="300" value="{{ form.get('title', '') }}"></label>
+      <label>اسم المقاول الرئيسي كما في الدليل<input type="text" name="main_contractor_name" required maxlength="300" value="{{ form.get('main_contractor_name', '') }}"></label>
+      <label>رقم الشركة في الأرشيف (اختياري)<input type="text" name="main_contractor_company_id" inputmode="numeric" maxlength="10" dir="ltr" value="{{ form.get('main_contractor_company_id', '') }}"></label>
+      <label>التخصص<select name="trade"><option value="">—</option>{% for label in TRADES %}<option value="{{ label }}" {{ 'selected' if form.get('trade')==label }}>{{ label }}</option>{% endfor %}</select></label>
+      <label>المدينة<input type="text" name="city" maxlength="100" value="{{ form.get('city', '') }}"></label>
+      <label>نوع الدليل<select name="evidence_kind" required><option value="">اختر</option>{% for k, label in EVIDENCE_KINDS.items() %}<option value="{{ k }}" {{ 'selected' if form.get('evidence_kind')==k }}>{{ label }}</option>{% endfor %}</select></label>
+      <label>رابط الدليل (https)<input name="evidence_url" type="url" required maxlength="500" dir="ltr" value="{{ form.get('evidence_url', '') }}"></label>
+      <label>ملاحظة الدليل<textarea name="evidence_note" maxlength="2000">{{ form.get('evidence_note', '') }}</textarea></label>
+      <label>تاريخ النشر<input name="published_date" type="date" value="{{ form.get('published_date', '') }}"></label>
+      <label>آخر موعد للرد<input name="response_deadline" type="date" value="{{ form.get('response_deadline', '') }}"></label>
+      <label>رقم منافسة مرتبطة في الأرشيف (للسياق فقط)<input type="text" name="related_tender_id" inputmode="numeric" maxlength="10" dir="ltr" value="{{ form.get('related_tender_id', '') }}"></label>
+      <button class="btn btn-primary" type="submit">إدخال (بانتظار المراجعة)</button></form>
+  </section>
+</div>
+{% endblock %}

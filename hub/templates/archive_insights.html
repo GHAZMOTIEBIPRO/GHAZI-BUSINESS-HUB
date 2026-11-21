@@ -1,0 +1,51 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}تحليلات السوق — الأرشيف{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head"><p><a href="/admin/archive">← الأرشيف</a></p><h1>تحليلات السوق من الأرشيف</h1>
+    <p class="muted small" id="insightsCaveat">الأرقام تصف <b>عينة الأرشيف فقط</b> ({{ ins.tenders }} منافسة مطابقة) وليست حصصًا سوقية ولا احتمالات فوز.
+      المتقدمون المعروضون هم الظاهرون علنًا فقط؛ في {{ ins.awarded_with_partial_bid_list }} منافسة مرساة قائمة المتقدمين غير مكتملة.</p></div>
+
+  <div class="actions" id="priorityCities">{% for c in priority_cities %}<a class="btn btn-outline" href="/admin/archive/insights?city={{ c|urlencode }}">{{ c }}</a>{% endfor %}
+    <a class="btn btn-outline" href="/admin/archive/insights">الكل</a></div>
+
+  <form class="card mt" method="get" action="/admin/archive/insights">
+    <div class="grid g4">
+      <label>المدينة<select name="city"><option value="">الكل</option>{% for c in facets.cities %}<option {{ 'selected' if f.city==c }}>{{ c }}</option>{% endfor %}</select></label>
+      <label>التخصص<select name="trade"><option value="">الكل</option>{% for t in TRADES %}<option {{ 'selected' if f.trade==t }}>{{ t }}</option>{% endfor %}</select></label>
+      <label>السنة<select name="year"><option value="">الكل</option>{% for y in facets.years %}<option {{ 'selected' if f.year==y }}>{{ y }}</option>{% endfor %}</select></label>
+      <label>الجهة الطارحة<input type="text" name="issuer" value="{{ f.issuer }}" maxlength="120"></label>
+    </div>
+    <div class="actions mt"><button class="btn btn-primary" type="submit">عرض</button></div>
+  </form>
+
+  <div class="grid g4 mt" id="insightStats">
+    <div class="card"><div class="muted small">منافسات مطابقة</div><div class="stat num" id="insTenders">{{ ins.tenders }}</div></div>
+    {% for k, label in LIFECYCLE.items() %}{% if k != 'D_subcontract_confirmed' %}<div class="card"><div class="muted small">{{ label }}</div><div class="stat num">{{ ins.by_lifecycle.get(k, 0) }}</div></div>{% endif %}{% endfor %}
+    <div class="card"><div class="muted small">ترسيات بقيمة منشورة</div><div class="stat num">{{ ins.awards_with_amount }}</div></div>
+    <div class="card"><div class="muted small">أقل قيمة ترسية</div><div class="stat num">{{ money(ins.award_min) if ins.award_min is not none else '—' }}</div></div>
+    <div class="card"><div class="muted small">الوسيط</div><div class="stat num" id="insMedian">{{ money(ins.award_median) if ins.award_median is not none else '—' }}</div></div>
+    <div class="card"><div class="muted small">أعلى قيمة ترسية</div><div class="stat num">{{ money(ins.award_max) if ins.award_max is not none else '—' }}</div></div>
+  </div>
+
+  <h2 class="mt">الشركات الأكثر ظهورًا في هذه العينة</h2>
+  <p class="muted small">عدد المشاركات الظاهرة وعدد الترسيات المنشورة. الاسم كما نُشر؛ الأسماء المتشابهة لا تُجمع إلا برقم سجل متحقق منه.</p>
+  <div class="table-wrap"><table id="insCompanies"><thead><tr><th>الشركة</th><th>الهوية</th><th>مشاركات ظاهرة</th><th>ترسيات منشورة</th><th>مجموع الترسيات المنشورة</th></tr></thead><tbody>
+  {% for r in ins.companies %}<tr><td><a href="/admin/archive/companies/{{ r.company.id }}">{{ r.company.display_name }}</a></td>
+    <td class="small">{{ IDENTITY.get(r.company.identity_status) }}</td><td class="num">{{ r.bids }}</td><td class="num">{{ r.wins }}</td>
+    <td class="num">{{ money(r.award_total) if r.wins else '—' }}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">لا بيانات مطابقة.</td></tr>{% endfor %}</tbody></table></div>
+
+  <div class="grid g2 mt">
+    <section class="card"><h2>الجهات الطارحة</h2>
+      <div class="table-wrap"><table id="insIssuers"><thead><tr><th>الجهة</th><th>منافسات</th></tr></thead><tbody>
+      {% for name, n in ins.issuers %}<tr><td><a href="/admin/archive?issuer={{ name|urlencode }}">{{ name }}</a></td><td class="num">{{ n }}</td></tr>
+      {% else %}<tr><td colspan="2" class="muted">—</td></tr>{% endfor %}</tbody></table></div></section>
+    <section class="card"><h2>المدن</h2>
+      <div class="table-wrap"><table id="insCities"><thead><tr><th>المدينة</th><th>منافسات</th></tr></thead><tbody>
+      {% for name, n in ins.by_city %}<tr><td><a href="/admin/archive/insights?city={{ name|urlencode }}">{{ name }}</a></td><td class="num">{{ n }}</td></tr>
+      {% else %}<tr><td colspan="2" class="muted">—</td></tr>{% endfor %}</tbody></table></div></section>
+  </div>
+</div>
+{% endblock %}

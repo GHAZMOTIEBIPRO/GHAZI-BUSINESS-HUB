@@ -1,0 +1,55 @@
+{% extends "base.html" %}{% import "_macros.html" as m with context %}
+{% block title %}أرشيف المناقصات — الإدارة{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="page-head row-between"><div><p><a href="/admin">← الإدارة</a></p><h1>أرشيف المناقصات والمتقدمين والترسيات</h1>
+    <p class="muted small" id="privacyNote">خاص بفريق المنصة. كل السجلات <b>غير منشورة</b> حتى يُوثق حق إعادة استخدام مصدرها. العروض المعروضة هي الظاهرة علنًا فقط وليست بالضرورة كل المتقدمين، والفائز لا يُستنتج من أقل عرض.</p></div>
+    <div class="actions"><a class="btn btn-outline" href="/admin/archive/companies">الشركات</a><a class="btn btn-outline" href="/admin/archive/sources">المصادر والتراخيص</a><a class="btn btn-outline" href="/admin/archive/subcontracts">فرص الباطن المؤكدة</a><a class="btn btn-outline" href="/admin/archive/insights">تحليلات السوق</a>{% if user.role=='admin' %}<a class="btn btn-primary" href="/admin/archive/import">استيراد حزمة</a>{% endif %}</div></div>
+
+  <div class="grid g4 mb" id="archiveStats">
+    <div class="card"><div class="muted small">منافسات (حقيقية)</div><div class="stat num">{{ stats.tenders }}</div></div>
+    <div class="card"><div class="muted small">عروض متقدمين معروفة</div><div class="stat num">{{ stats.bids }}</div></div>
+    <div class="card"><div class="muted small">ترسيات بأسماء فائزين</div><div class="stat num">{{ stats.awards }}</div></div>
+    <div class="card"><div class="muted small">أسماء شركات (غير متحقق من هويتها)</div><div class="stat num">{{ stats.companies }}</div></div>
+    {% for k, label in LIFECYCLE.items() %}<div class="card"><div class="muted small">{{ label }}</div><div class="stat num">{{ stats.by_lifecycle.get(k, 0) }}</div></div>{% endfor %}
+    <div class="card"><div class="muted small">منشور للعموم</div><div class="stat num" id="publicCount">{{ stats.public }}</div></div>
+  </div>
+
+  <form class="card filters" method="get" action="/admin/archive" aria-label="بحث في الأرشيف">
+    <div class="grid g4">
+      <label>بحث بالعنوان أو الرقم<input type="text" name="q" value="{{ f.q }}" maxlength="120"></label>
+      <label>السنة<select name="year"><option value="">الكل</option>{% for y in facets.years %}<option {{ 'selected' if f.year==y }}>{{ y }}</option>{% endfor %}</select></label>
+      <label>المدينة<select name="city"><option value="">الكل</option>{% for c in facets.cities %}<option {{ 'selected' if f.city==c }}>{{ c }}</option>{% endfor %}</select></label>
+      <label>المنطقة<select name="region"><option value="">الكل</option>{% for r in facets.regions %}<option {{ 'selected' if f.region==r }}>{{ r }}</option>{% endfor %}</select></label>
+      <label>الجهة الطارحة<input type="text" name="issuer" value="{{ f.issuer }}" maxlength="120"></label>
+      <label>التخصص<select name="trade"><option value="">الكل</option>{% for t in TRADES %}<option {{ 'selected' if f.trade==t }}>{{ t }}</option>{% endfor %}</select></label>
+      <label>اسم شركة (متقدمة أو فائزة)<input type="text" name="company" value="{{ f.company }}" maxlength="120"></label>
+      <label>الحالة<select name="status"><option value="">الكل</option>{% for k, v in TENDER_STATUS.items() %}<option value="{{ k }}" {{ 'selected' if f.status==k }}>{{ v }}</option>{% endfor %}</select></label>
+      <label>التصنيف<select name="lifecycle"><option value="">الكل</option>{% for k, v in LIFECYCLE.items() %}<option value="{{ k }}" {{ 'selected' if f.lifecycle==k }}>{{ v }}</option>{% endfor %}</select></label>
+      <label>قيمة الترسية من (ر.س)<input type="text" name="min_value" inputmode="numeric" value="{{ f.min_value or '' }}"></label>
+      <label>إلى (ر.س)<input type="text" name="max_value" inputmode="numeric" value="{{ f.max_value or '' }}"></label>
+    </div>
+    <div class="actions mt"><button class="btn btn-primary" type="submit">بحث</button><a class="btn btn-outline" href="/admin/archive">مسح</a></div>
+  </form>
+
+  <p class="muted small mt"><span id="resultCount">{{ total }} نتيجة</span>
+    {% if total %} · <a id="exportCsv" href="/admin/archive/export.csv{{ ('?' ~ request.url.query) if request.url.query }}">تنزيل النتائج CSV (خاص بالفريق)</a>{% endif %}</p>
+  <div class="table-wrap"><table id="tendersTable"><thead><tr><th>الرقم</th><th>المشروع</th><th>الجهة</th><th>المدينة</th><th>الحالة</th><th>الفائز (كما نُشر)</th><th>قيمة الترسية</th><th>المتقدمون: معروف/معلن</th><th>الاكتمال</th></tr></thead><tbody>
+  {% for t in rows %}<tr><td class="num"><a href="/admin/archive/tenders/{{ t.id }}">{{ t.official_reference }}</a></td><td>{{ t.title }}</td><td>{{ t.issuer.name if t.issuer else '—' }}</td><td>{{ m.val(t.city) }}</td>
+    <td><span class="badge {{ 'b-ok' if t.status=='awarded' else 'b-lead' }}">{{ TENDER_STATUS.get(t.status, t.status) }}</span></td>
+    <td>{% for a in t.awards %}{{ a.winner_name_raw }}{% else %}<span class="muted">—</span>{% endfor %}</td>
+    <td class="num">{% for a in t.awards %}{{ money(a.award_amount_sar) if a.award_amount_sar is not none else '—' }}{% else %}—{% endfor %}</td>
+    <td class="num">{{ t.bidders_known }}/{{ t.offer_count_claimed if t.offer_count_claimed is not none else '؟' }}</td><td class="num">{{ (t.completeness*100)|round|int }}%</td></tr>
+  {% else %}<tr><td colspan="9" class="muted">لا نتائج.</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% if pages > 1 %}<p class="actions mt">{% for p in range(1, pages+1) %}{% if p <= 20 %}<a class="btn btn-sm {{ 'btn-primary' if p==f.page else 'btn-outline' }}" href="?{{ request.query_params|string|replace('page='~f.page, '') }}&page={{ p }}">{{ p }}</a>{% endif %}{% endfor %}</p>{% endif %}
+
+  <h2 class="mt">آخر دفعات الاستيراد</h2>
+  <div class="table-wrap"><table><thead><tr><th>#</th><th>الملف</th><th>الحالة</th><th>جديد</th><th>محدّث</th><th>بلا تغيير</th><th>بدأت</th></tr></thead><tbody>
+  {% for b in batches %}<tr><td class="num"><a href="/admin/archive/batches/{{ b.id }}">{{ b.id }}</a></td><td>{{ b.label }}{% if b.is_synthetic %} <span class="badge b-bad">اصطناعية</span>{% endif %}</td><td>{{ b.status }}</td>
+    <td class="num">{{ b.counts.get('tenders_new', 0) }}</td><td class="num">{{ b.counts.get('tenders_updated', 0) }}</td><td class="num">{{ b.counts.get('tenders_existing_unchanged', 0) }}</td><td class="num small">{{ ksa(b.started_at, '%Y-%m-%d %H:%M') }}</td></tr>
+  {% else %}<tr><td colspan="7" class="muted">لا دفعات.</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

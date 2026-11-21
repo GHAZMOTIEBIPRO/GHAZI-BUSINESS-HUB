@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import jobs, mailer, oidc, quotes, radar, store, totp
+from .archive import web as archive_web
 from .config import settings
 from .db import get_db, init_db, utcnow
 from .models import (
@@ -136,8 +137,10 @@ def safe_next(n: str | None) -> str:
 @app.on_event("startup")
 def _startup():
     init_db()
-    from .db import SessionLocal
+    from .archive.migrate import upgrade as archive_upgrade
+    from .db import SessionLocal, engine
 
+    archive_upgrade(engine)  # Alembic-managed procurement archive tables (idempotent; separate metadata)
     with SessionLocal() as db:
         jobs.seed(db)
 
@@ -940,6 +943,10 @@ def download_file(token: str, db: Session = Depends(get_db), user: User = Depend
 # ----------------------------------------------------------------- admin
 staff = require_role("admin", "reviewer")
 admin_only = require_role("admin")
+
+# procurement archive (staff only; private until source licences are verified)
+archive_web.register(app, render=render, staff=staff, admin_only=admin_only, verify_csrf=verify_csrf, get_db=get_db,
+                     redirect=redirect)
 
 
 @app.get("/admin", response_class=HTMLResponse)

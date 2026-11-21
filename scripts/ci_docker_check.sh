@@ -26,6 +26,8 @@ run() {
 run
 curl -s http://127.0.0.1:8000/healthz | tee health1.json; echo
 grep -q '"db":"postgresql"' health1.json || { echo "FAIL: not on PostgreSQL"; exit 1; }
+rev=$(psql "$PG_URL" -tAc "select version_num from alembic_version_archive")
+[ -n "$rev" ] && echo "PASS archive migrations applied at start-up ($rev)" || { echo "FAIL: archive migrations missing"; exit 1; }
 python scripts/live_check.py http://127.0.0.1:8000 --write
 curl -sf -X POST -H "Authorization: Bearer ci-docker-jobs" http://127.0.0.1:8000/internal/jobs/refresh >/dev/null
 echo "PASS refresh recorded; restarting the container"
