@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ p.company.display_name }} — سجل الترسيات المنشورة | غازي للأعمال{% endblock %}
+{% block content %}
+<div class="wrap intel-content">
+ <nav class="intel-breadcrumb"><a href="/intelligence?kind=company">ذكاء الشركات</a> / ملف الشركة</nav>
+ <section class="intel-panel">
+  <p class="intel-eyebrow">ملف المقاول من أرشيف السجلات المصرح بنشرها</p>
+  <h1>{{ p.company.display_name }}</h1>
+  <p class="muted">السجل التجاري: <span class="num">{{ p.company.cr_number or 'غير موثق' }}</span> · الرقم الموحد: {{ p.company.unified_number or 'غير موثق' }} · {{ 'الهوية موثقة' if p.company.identity_status=='registry_verified' else 'هوية الشركة غير مكتملة التحقق' }}</p>
+  <div class="intel-facts">
+    <div><small>ترسيات منشورة</small><strong class="num">{{ p.awards|length }}</strong></div>
+    <div><small>مشاركات منشورة</small><strong class="num">{{ p.bids|length }}</strong></div>
+    <div><small>قيم ترسيات منشورة</small><strong class="num">{{ money(p.total_awards_value) if p.amounts_count else 'غير متوفر' }}</strong></div>
+    <div><small>قيم متاحة</small><strong>{{ p.amounts_count }} من {{ p.awards|length }}</strong></div>
+  </div>
+  <p class="small muted">الأعداد تخص فقط السجلات المنشورة في أرشيفنا (بحد 100 سجل لكل قسم). لا تمثل جميع مشاريع المقاول في المملكة. الترسية لا تثبت التنفيذ الفعلي.</p>
+ </section>
+ <section class="intel-panel"><h2>المشاريع التي رست على الشركة بحسب الأرشيف</h2>
+  <div class="table-wrap"><table><thead><tr><th>المشروع</th><th>الجهة</th><th>المدينة</th><th>التاريخ</th><th>القيمة</th></tr></thead><tbody>
+  {% for a in p.awards %}<tr>
+    <td><a href="/intelligence/tender/{{ a.tender.official_reference }}">{{ a.tender.title }}</a><small class="intel-block">{{ a.tender.official_reference }}</small></td>
+    <td>{{ a.tender.issuer.name if a.tender.issuer else 'غير منشورة' }}</td>
+    <td>{{ a.tender.city or '—' }}</td>
+    <td>{{ a.award_date or a.tender.award_date or '—' }}</td>
+    <td>{{ money(a.award_amount_sar) if a.award_amount_sar is not none else 'غير منشورة' }}</td>
+  </tr>{% else %}<tr><td colspan="5">لا ترسيات منشورة مرتبطة بهذه الشركة.</td></tr>{% endfor %}
+  </tbody></table></div>
+ </section>
+ <section class="intel-panel"><h2>المشاركات المنشورة في المنافسات</h2>
+  <div class="table-wrap"><table><thead><tr><th>المنافسة</th><th>الجهة</th><th>حالة العرض</th><th>القيمة</th></tr></thead><tbody>
+  {% for b in p.bids %}<tr>
+    <td><a href="/intelligence/tender/{{ b.tender.official_reference }}">{{ b.tender.title }}</a></td>
+    <td>{{ b.tender.issuer.name if b.tender.issuer else 'غير منشورة' }}</td>
+    <td>{{ b.bid_status or 'غير منشورة' }}</td>
+    <td>{{ money(b.bid_amount_sar) if b.bid_amount_sar is not none else 'غير منشورة' }}</td>
+  </tr>{% else %}<tr><td colspan="4">لا مشاركات منشورة لهذه الشركة.</td></tr>{% endfor %}
+  </tbody></table></div>
+ </section>
+</div>
+{% endblock %}
