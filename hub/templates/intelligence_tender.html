@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}المنافسة {{ reference }} — ذكاء المناقصات | غازي للأعمال{% endblock %}
+{% block description %}ملف المنافسة الحكومية بالمرجع {{ reference }} مع روابط المصدر وتاريخ النشر والحالة والترسيات المنشورة.{% endblock %}
+{% block content %}
+<div class="wrap intel-content">
+ <nav class="intel-breadcrumb"><a href="/intelligence">ذكاء المناقصات</a> / <span class="num">{{ reference }}</span></nav>
+ <section class="intel-panel">
+  <p class="intel-eyebrow">ملف المنافسة · الرقم المرجعي <span class="num">{{ reference }}</span></p>
+  <h1>{{ remote.name if remote and remote.name else (record.title if record else 'المنافسة غير متاحة') }}</h1>
+  <p class="muted">{{ remote.agency if remote and remote.agency else (record.issuer.name if record and record.issuer else 'جهة غير منشورة') }}</p>
+  {% if remote %}<span class="badge {{ 'b-confirmed' if remote.is_open else 'b-awarded' }}">{{ 'مفتوحة وفق المصدر' if remote.is_open else (remote.status or 'الحالة غير منشورة') }}</span>{% endif %}
+  {% if record %}<span class="badge b-lead">سجل محلي مصرح بنشره</span>{% endif %}
+  {% if error %}<p class="intel-notice" role="status">{{ error }}</p>{% endif %}
+  <div class="intel-facts">
+    <div><small>النشاط</small><strong>{{ remote.activity if remote and remote.activity else (record.sector if record else 'غير منشور') }}</strong></div>
+    <div><small>نوع المنافسة</small><strong>{{ remote.tender_type if remote and remote.tender_type else 'غير منشور' }}</strong></div>
+    <div><small>المدينة</small><strong>{{ remote.city if remote and remote.city else (record.city if record and record.city else 'غير منشورة') }}</strong></div>
+    <div><small>المنطقة</small><strong>{{ remote.region if remote and remote.region else (record.region if record and record.region else 'غير منشورة') }}</strong></div>
+    <div><small>تاريخ النشر</small><strong>{{ remote.publish_date if remote and remote.publish_date else (record.published_date if record and record.published_date else 'غير منشور') }}</strong></div>
+    <div><small>آخر موعد لتقديم العروض</small><strong>{{ remote.closes_at or remote.last_submission if remote and (remote.closes_at or remote.last_submission) else (record.submission_deadline if record and record.submission_deadline else 'غير منشور') }}</strong></div>
+    <div><small>مدة العقد</small><strong>{{ remote.contract_duration if remote and remote.contract_duration else 'غير منشورة' }}</strong></div>
+    <div><small>قيمة وثائق المنافسة</small><strong>{{ remote.booklet_total_sar if remote and remote.booklet_total_sar else 'غير منشورة' }}</strong></div>
+    <div><small>تاريخ الترسية</small><strong>{{ record.award_date if record and record.award_date else 'غير متوفر لدى أرشيفنا' }}</strong></div>
+  </div>
+  <div class="intel-actions">
+    {% if remote and remote.etimad_url %}<a class="btn btn-primary" href="{{ remote.etimad_url }}" rel="noopener noreferrer nofollow" target="_blank">المنافسة على اعتماد (المرجع الرسمي)</a>{% endif %}
+    {% if remote and remote.url %}<a class="btn btn-outline" href="{{ remote.url }}" rel="noopener noreferrer nofollow" target="_blank">البيانات المعروضة في Daall</a>{% endif %}
+    {% if record and record.source_url and record.source_url.startswith('https://') %}<a class="btn btn-outline" href="{{ record.source_url }}" rel="noopener noreferrer nofollow" target="_blank">رابط مصدر الأرشيف</a>{% endif %}
+    <a class="btn btn-outline" href="/intelligence?kind=tender&amp;q={{ reference }}">بحث جديد</a>
+  </div>
+ </section>
+ {% if remote and remote.winners %}
+ <section class="intel-panel">
+  <h2>الفائزون المذكورون في الاستعلام</h2>
+  <p class="small muted">الأسماء الواردة من Daall. يجب مطابقة قرار الترسية الأصلي؛ لا يعني الفوز بالترسية اكتمال التنفيذ.</p>
+  {% for w in remote.winners %}
+    <div class="intel-result"><strong>{{ w.name or 'الفائز غير منشور' }}</strong><span>{{ w.value if w.value else 'القيمة غير منشورة' }}</span></div>
+  {% endfor %}
+ </section>
+ {% endif %}
+ {% if record and record.awards %}
+ <section class="intel-panel">
+  <h2>قرارات الترسية المنشورة في أرشيفنا</h2>
+  <div class="table-wrap"><table><thead><tr><th>الفائز كما ورد</th><th>القيمة (ريال)</th><th>التاريخ</th><th>المصدر</th></tr></thead><tbody>
+  {% for a in record.awards %}<tr>
+   <td>{{ a.winner_name_raw }}</td>
+   <td class="num">{{ money(a.award_amount_sar) if a.award_amount_sar is not none else 'غير منشورة' }}</td>
+   <td>{{ a.award_date or '—' }}</td>
+   <td>{% if a.source_url and a.source_url.startswith('https://') %}<a href="{{ a.source_url }}" target="_blank" rel="noopener noreferrer nofollow">البيان</a>{% else %}غير متاح{% endif %}</td>
+  </tr>{% endfor %}
+  </tbody></table></div>
+ </section>
+ {% endif %}
+ {% if record and record.bids %}
+ <section class="intel-panel">
+  <h2>المتقدمون المنشورة أسماؤهم</h2>
+  <p class="small muted">هذه قائمة جزئية ما لم يثبت اكتمال عدد المتقدمين؛ ترتيب السعر لا يثبت الفوز.</p>
+  <div class="table-wrap"><table><thead><tr><th>المتنافس</th><th>عرض السعر</th><th>التأهيل الفني</th></tr></thead><tbody>
+  {% for b in record.bids %}<tr><td>{{ b.bidder_name_raw }}</td><td class="num">{{ money(b.bid_amount_sar) if b.bid_amount_sar is not none else 'غير منشور' }}</td><td>{{ b.technical_result or 'غير منشور' }}</td></tr>{% endfor %}
+  </tbody></table></div>
+ </section>
+ {% endif %}
+ {% if not remote and not record %}
+ <div class="card intel-empty"><h2>هذه المنافسة لم تُسترد من مصدر متاح</h2>
+ <p>غياب سجل عن المنصة لا يدل على عدم وجوده رسميًا. يمكن مراجعة اعتماد أو إجراء بحث جديد.</p></div>
+ {% endif %}
+ <p class="intel-disclosure">تُعرض البيانات الأجنبية لحظة طلب المستخدم، ولا تُحفظ ضمن أرشيف غازي للأعمال. تفاصيل المناقصة الرسمية وقرار الترسية المنشور هما المرجع في حال اختلاف البيانات.</p>
+</div>
+{% endblock %}

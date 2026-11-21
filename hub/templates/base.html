@@ -23,7 +23,7 @@
     <a class="brand" href="/"><img src="/static/logo.svg" width="40" height="40" alt=""><span>غازي للأعمال<small>فرص المقاولات وأدوات المقاول</small></span></a>
     <button class="menu-btn" id="menuBtn" type="button" aria-controls="siteNav" aria-expanded="false" aria-label="القائمة">☰</button>
     <nav class="nav" id="siteNav" aria-label="القائمة الرئيسية">
-      {% set links = [("/radar","رادار الفرص"),("/store","متجر الأدوات"),("/pricing","الاشتراكات"),("/calculator","حاسبة التسعير"),("/sources","المصادر")] %}
+      {% set links = [("/radar","رادار الفرص"),("/intelligence","ذكاء المناقصات والشركات"),("/store","متجر الأدوات"),("/pricing","الاشتراكات"),("/calculator","حاسبة التسعير"),("/sources","المصادر")] %}
       {% for href,label in links %}<a href="{{ href }}" {% if path.startswith(href) %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
       {% if user %}
         <a href="/dashboard" {% if path=='/dashboard' %}aria-current="page"{% endif %}>لوحتي</a>
@@ -45,7 +45,7 @@
   <div class="wrap">
     <div><strong>غازي للأعمال</strong><p>فرص مقاولات التشطيبات والصيانة من مصادر قابلة للتحقق، وأدوات عمل يومية للمقاول السعودي.</p>
       <p class="small">كل فرصة تُعرض برابط مصدرها وتاريخ آخر تحقق. لا نخترع جهات اتصال أو حالات مشاريع.</p></div>
-    <div><strong>المنصة</strong><br><a href="/radar">الرادار</a><br><a href="/store">المتجر</a><br><a href="/pricing">الاشتراكات</a><br><a href="/sources">المصادر ومنهجية التحقق</a></div>
+    <div><strong>المنصة</strong><br><a href="/radar">الرادار</a><br><a href="/intelligence">ذكاء المناقصات والشركات</a><br><a href="/store">المتجر</a><br><a href="/pricing">الاشتراكات</a><br><a href="/sources">المصادر ومنهجية التحقق</a></div>
     <div><strong>السياسات</strong><br><a href="/privacy">الخصوصية</a><br><a href="/terms">الشروط</a><br><a href="/refunds">الاسترداد</a><br><a href="/about">عن المنصة</a></div>
   </div>
 </footer>

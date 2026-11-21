@@ -72,7 +72,7 @@ def read_only(base: str, health: dict) -> None:
         print(("PASS " if last < started else "INFO ") + RESULTS[-1]["check"] + " — " + RESULTS[-1]["evidence"])
     c = httpx.Client(base_url=base, timeout=60, follow_redirects=False)
     for path, marker in [("/", "غازي"), ("/radar", "رادار"), ("/store", "متجر"), ("/pricing", "الاشتراكات"),
-                         ("/sources", "المصادر"), ("/calculator", ""), ("/login", "دخول"), ("/register", "حساب")]:
+                         ("/sources", "المصادر"), ("/intelligence", "ذكاء المناقصات"), ("/calculator", ""), ("/login", "دخول"), ("/register", "حساب")]:
         r = c.get(path)
         check(f"page {path} opens", r.status_code == 200 and marker in r.text, f"status={r.status_code}")
     # A fresh anonymous client must receive the cookie; an existing session need not reissue Set-Cookie.

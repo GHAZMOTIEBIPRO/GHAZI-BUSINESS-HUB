@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}ذكاء المناقصات والشركات — غازي للأعمال{% endblock %}
+{% block description %}ابحث عن مناقصة برقم اعتماد، أو عن شركة بالاسم والسجل التجاري، مع بيانات مصدرها ودرجة التحقق.{% endblock %}
+{% block content %}
+<section class="intel-hero">
+ <div class="wrap">
+  <p class="intel-kicker">GHAZI INTELLIGENCE / ذكاء المشاريع</p>
+  <h1>اعرف المنافسة، وتتبّع ترسيتها، <em>واكتشف سجل المقاول.</em></h1>
+  <p class="intel-subtitle">بحث موحد في المناقصات والجهات والشركات. نتائج البيانات المحلية المسموح بنشرها مستقلة عن الاستعلام اللحظي من المصدر الخارجي؛ لا نخلط بين الفوز بالترسية وإثبات التنفيذ.</p>
+  <form action="/intelligence" method="get" class="intel-search" role="search" id="intelligenceSearch">
+    <label for="query">ابحث برقم المناقصة أو اسم الشركة أو السجل التجاري</label>
+    <div class="intel-searchbar">
+     <select name="kind" aria-label="نوع البحث" id="intelKind">
+       <option value="tender" {% if kind=='tender' %}selected{% endif %}>المناقصات والمشاريع</option>
+       <option value="company" {% if kind=='company' %}selected{% endif %}>الشركات والسجلات</option>
+     </select>
+     <input id="query" name="q" type="search" value="{{ q }}" minlength="2" maxlength="120" required
+            placeholder="260439001976 أو شركة المقاولات..." autocomplete="off">
+     <button class="btn btn-primary" type="submit">بحث مباشر</button>
+    </div>
+    <div class="intel-search-extra">
+      <label for="intelRegion">المنطقة (عند البحث بالمناقصات)</label>
+      <input id="intelRegion" name="region" value="{{ region }}" maxlength="60" placeholder="جميع المناطق">
+      <label class="intel-check"><input type="checkbox" name="open_only" value="true" {% if open_only %}checked{% endif %}> المفتوحة فقط</label>
+    </div>
+  </form>
+  <div class="intel-chips">
+   <span>بحث سريع:</span>
+   <a href="/intelligence?kind=tender&amp;q=260439001976">المنافسة 260439001976</a>
+   <a href="/intelligence?kind=tender&amp;q=صيانة">الصيانة</a>
+   <a href="/intelligence?kind=tender&amp;q=تشطيبات">التشطيبات</a>
+   <a href="/intelligence?kind=company">سجل المقاول</a>
+  </div>
+ </div>
+</section>
+
+<div class="wrap intel-content">
+  <section class="intel-info-row" aria-label="منهجية البيانات">
+    <div><b>المصدر الأصلي أولًا</b><span>رابط اعتماد عند توفره</span></div>
+    <div><b>حالتان مختلفتان</b><span>منافسة مفتوحة / ترسية مثبتة</span></div>
+    <div><b>لا بيانات مخترعة</b><span>الحقول غير المنشورة تُترك بلا قيمة</span></div>
+    <div><b>لا استنساخ للبيانات</b><span>بحث لحظي لا يُخزّن النتائج الخارجية</span></div>
+  </section>
+
+  {% if q %}
+  <div class="intel-section-head">
+    <div><p class="intel-eyebrow">نتائج الاستعلام</p><h2>نتائج «{{ q }}»</h2></div>
+    <span class="badge b-lead">{{ 'بحث شركة' if kind == 'company' else 'بحث مناقصة' }}</span>
+  </div>
+  {% if error %}<div class="card intel-notice" role="status">{{ error }}</div>{% endif %}
+
+  {% if kind == 'tender' %}
+    {% if remote and remote.reference_no is defined %}
+    <section class="intel-panel">
+      <div class="intel-panel-title"><h3>تفاصيل المنافسة من المصدر الخارجي</h3><span class="intel-origin">استعلام لحظي — Daall</span></div>
+      <div class="intel-result-top">
+       <div><p class="intel-eyebrow">مرجع {{ remote.reference_no }}</p><h2>{{ remote.name or 'عنوان غير متوفر' }}</h2><p>{{ remote.agency or 'الجهة غير منشورة' }}</p></div>
+       <div class="intel-tag">{{ 'مفتوحة' if remote.is_open else (remote.status or 'الحالة غير معروفة') }}</div>
+      </div>
+      <div class="intel-facts">
+        <div><small>النشاط</small><strong>{{ remote.activity or 'غير منشور' }}</strong></div>
+        <div><small>المدينة / المنطقة</small><strong>{{ remote.city or remote.region or 'غير منشور' }}</strong></div>
+        <div><small>تاريخ النشر</small><strong class="num">{{ remote.publish_date or 'غير منشور' }}</strong></div>
+        <div><small>آخر موعد</small><strong class="num">{{ remote.closes_at or remote.last_submission or 'غير منشور' }}</strong></div>
+        <div><small>مدة العقد</small><strong>{{ remote.contract_duration or 'غير منشورة' }}</strong></div>
+        <div><small>قيمة الكراسة</small><strong>{{ remote.booklet_total_sar or 'غير منشورة' }}</strong></div>
+      </div>
+      <div class="intel-actions">
+        <a class="btn btn-primary" href="/intelligence/tender/{{ remote.reference_no }}">فتح ملف المنافسة</a>
+        {% if remote.etimad_url %}<a class="btn btn-outline" href="{{ remote.etimad_url }}" rel="noopener noreferrer nofollow" target="_blank">المصدر الرسمي: اعتماد</a>{% endif %}
+        {% if remote.url %}<a class="btn btn-outline" href="{{ remote.url }}" rel="noopener noreferrer nofollow" target="_blank">عرض بيانات Daall</a>{% endif %}
+      </div>
+    </section>
+    {% elif remote and remote['items'] is defined %}
+    <section class="intel-panel">
+      <div class="intel-panel-title"><h3>المناقصات المطابقة في البحث اللحظي</h3>
+        <span class="intel-origin">Daall · {{ remote.total if remote.total is not none else 'عدد غير معلوم' }} نتيجة بالمصدر</span>
+      </div>
+      <div class="intel-results">
+      {% for t in remote['items'] %}
+        <article class="intel-result">
+          <div><span class="intel-id">#{{ t.reference_no or '—' }}</span><h3>{{ t.name or 'منافسة دون عنوان' }}</h3><p>{{ t.agency or 'جهة غير منشورة' }} · {{ t.city or t.region or 'الموقع غير منشور' }}</p></div>
+          <div class="intel-result-side"><span class="intel-tag">{{ 'مفتوحة' if t.is_open else (t.status or 'غير معلوم') }}</span>
+            {% if t.reference_no %}<a href="/intelligence/tender/{{ t.reference_no }}">عرض التفاصيل</a>{% elif t.url %}<a href="{{ t.url }}" target="_blank" rel="noopener noreferrer nofollow">المصدر</a>{% endif %}
+          </div>
+        </article>
+      {% else %}<p class="muted">لم يعد المصدر بنتائج مطابقة.</p>{% endfor %}
+      </div>
+      {% if remote.url %}<p class="intel-attribution"><a href="{{ remote.url }}" rel="noopener noreferrer nofollow" target="_blank">استعراض كامل البحث على Daall</a></p>{% endif %}
+      <p class="small muted">يعرض المصدر في الاستعلام الواحد حتى 20 نتيجة؛ الرقم الإجمالي لديه لا يعني أننا حفظنا جميع هذه المنافسات.</p>
+    </section>
+    {% endif %}
+    {% if local_tenders %}
+    <section class="intel-panel">
+      <div class="intel-panel-title"><h3>السجلات المحلية المصرّح بنشرها</h3><span class="intel-origin">أرشيف غازي للأعمال</span></div>
+      {% for t in local_tenders %}
+       <article class="intel-result"><div><span class="intel-id">{{ t.official_reference }}</span><h3><a href="/intelligence/tender/{{ t.official_reference }}">{{ t.title }}</a></h3><p>{{ t.issuer.name if t.issuer else 'جهة غير منشورة' }} · {{ t.city or 'مدينة غير منشورة' }}</p></div><span class="intel-tag">{{ t.status_as_published or t.status }}</span></article>
+      {% endfor %}
+    </section>
+    {% endif %}
+  {% else %}
+    {% if remote and remote.name %}
+    <section class="intel-panel">
+     <div class="intel-panel-title"><h3>ملف شركة في المصدر الخارجي</h3><span class="intel-origin">Daall — استعلام لحظي</span></div>
+     <h2>{{ remote.name }}</h2>
+     <p class="muted small">هذه معلومات مشاركات وترسيات حسب ما يتيحه المصدر، وليست شهادة بإنجاز المشاريع أو ضمانًا لاكتمال جميع العقود.</p>
+     <div class="intel-facts intel-company-stats">
+       <div><small>مشاركات مرصودة</small><strong>{{ remote.participations if remote.participations is not none else 'غير متاح' }}</strong></div>
+       <div><small>ترسيات معروفة</small><strong>{{ remote.wins if remote.wins is not none else 'غير متاح' }}</strong></div>
+       <div><small>إجمالي القيمة المنشورة</small><strong>{{ '{:,.0f}'.format(remote.won_value_sar) ~ ' ر.س' if remote.won_value_sar is not none else 'غير متاح' }}</strong></div>
+       <div><small>آخر ظهور لدى المصدر</small><strong>{{ remote.last_seen or 'غير متاح' }}</strong></div>
+     </div>
+     <div class="grid g2 intel-lists">
+       <div><h3>الجهات الأكثر ارتباطًا</h3><ul>{% for x in remote.top_agencies %}<li>{{ x }}</li>{% else %}<li>لا تتوفر تفاصيل.</li>{% endfor %}</ul></div>
+       <div><h3>التخصصات المرصودة</h3><ul>{% for x in remote.top_activities %}<li>{{ x }}</li>{% else %}<li>لا تتوفر تفاصيل.</li>{% endfor %}</ul></div>
+     </div>
+     {% if remote.recent_wins %}
+       <h3>الترسيات الأخيرة المتاحة</h3>
+       <div class="intel-results">
+       {% for w in remote.recent_wins %}
+         <div class="intel-result"><div><b>{{ w.name or 'مشروع دون عنوان' }}</b><p>{{ w.reference_no or 'المرجع غير منشور' }}</p></div>
+          {% if w.url %}<a href="{{ w.url }}" rel="noopener noreferrer nofollow" target="_blank">بيانات المصدر</a>{% endif %}
+         </div>
+       {% endfor %}
+       </div>
+     {% endif %}
+     {% if remote.url %}<p class="intel-attribution"><a href="{{ remote.url }}" rel="noopener noreferrer nofollow" target="_blank">فتح السجل الأصلي في Daall للتحقق والتفاصيل</a></p>{% endif %}
+    </section>
+    {% endif %}
+    {% if local_companies %}
+    <section class="intel-panel">
+     <div class="intel-panel-title"><h3>شركات لها ترسيات/مشاركات منشورة في أرشيفنا</h3><span class="intel-origin">أرشيف مرخص فقط</span></div>
+     {% for c in local_companies %}
+      <article class="intel-result"><div><h3>{{ c.display_name }}</h3><p>السجل التجاري: {{ c.cr_number or 'غير مثبت لدينا' }} · {{ 'هوية موثقة' if c.identity_status=='registry_verified' else 'هوية قيد التحقق' }}</p></div>
+      <a class="btn btn-outline" href="/intelligence/company/{{ c.id }}">سجل المشاريع المنشورة</a></article>
+     {% endfor %}
+    </section>
+    {% endif %}
+  {% endif %}
+  {% if not remote and not local_tenders and not local_companies %}
+  <div class="card intel-empty">
+    <h2>لا توجد بيانات مطابقة متاحة للعرض الآن</h2>
+    <p>قد يكون السبب عدم اكتمال استيراد التاريخ، أو عدم نشر المعلومة لدى المصدر، أو تعذّر الاتصال. لا يعني غياب النتيجة أن الشركة لم تنفذ مشروعًا أو أن المناقصة غير موجودة.</p>
+    <a href="/sources">استعراض المصادر الرسمية وطرق الوصول</a>
+  </div>
+  {% endif %}
+  {% else %}
+  <section class="intel-start">
+   <h2>ماذا تستطيع البحث عنه؟</h2>
+   <div class="grid g3">
+    <article class="card"><h3>المناقصات الحكومية</h3><p>البحث بالرقم أو كلمات أعمال الصيانة والتشطيبات، مع تواريخ المصدر وحالة المنافسة.</p></article>
+    <article class="card"><h3>ملفات الشركات</h3><p>المشاركات والترسيات المثبتة وأسماء الجهات والقيم المنشورة، مع فصلها عن إنجاز الأعمال.</p></article>
+    <article class="card"><h3>الأرشيف التاريخي</h3><p>الملفات القانونية المستوردة والمجازة للنشر فقط؛ حالة التغطية ليست ادعاءً بالشمول.</p></article>
+   </div>
+  </section>
+  {% endif %}
+  <p class="intel-disclosure">المصدر الخارجي: <a href="{{ source_url }}" rel="noopener noreferrer nofollow" target="_blank">Mnaqasat / Daall (واجهة MCP العامة)</a>، وهي منصة مستقلة عن اعتماد وعن غازي للأعمال. لا تُخزّن الاستعلامات الخارجية أو تُعيد هذه الصفحة توزيع قاعدة المصدر كاملة. مرجع المنافسة الرسمي هو منصة اعتماد.</p>
+</div>
+{% endblock %}
