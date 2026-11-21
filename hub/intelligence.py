@@ -31,6 +31,7 @@ def _like(value: str) -> str:
 def _public():
     return (ProcurementTender.visibility == "public",
             ProcurementTender.publish_allowed.is_(True),
+            ProcurementTender.source_rights_status == "verified_open_license",
             ProcurementTender.is_synthetic.is_(False))
 
 
